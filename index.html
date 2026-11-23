@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>小气象员 · 接雨滴</title>
+<style>
+  :root{
+    --ink:#e8f2ff;
+    --dim:#8fb0d6;
+    --accent:#5ec8ff;
+    --warn:#ffd166;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{
+    margin:0;height:100%;overflow:hidden;
+    background:#060d1a;
+    font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--ink);
+    user-select:none;
+  }
+  #stage{
+    position:relative;
+    width:100%;max-width:520px;height:100%;
+    margin:0 auto;
+    touch-action:none;
+    overflow:hidden;
+    box-shadow:0 0 80px rgba(20,60,120,.35);
+  }
+  canvas{display:block;width:100%;height:100%}
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:absolute;inset:0;pointer-events:none;
+    padding:14px 16px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  #score{
+    font-size:34px;font-weight:800;letter-spacing:.5px;
+    line-height:1;text-shadow:0 2px 18px rgba(94,200,255,.55);
+    font-variant-numeric:tabular-nums;
+  }
+  #score small{font-size:12px;font-weight:600;color:var(--dim);letter-spacing:2px;margin-left:6px}
+  #lives{display:flex;gap:6px}
+  .life{
+    width:12px;height:12px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#9fe1ff,#3aa4e8 60%,#1b5f9e);
+    box-shadow:0 0 10px rgba(94,200,255,.7);
+    transition:.25s;
+  }
+  .life.off{background:#1d2f47;box-shadow:none;opacity:.55}
+  #combo{
+    position:absolute;left:50%;top:76px;transform:translateX(-50%);
+    font-size:15px;font-weight:800;color:var(--warn);
+    letter-spacing:1px;opacity:0;transition:opacity .18s;
+    text-shadow:0 2px 12px rgba(255,209,102,.5);
+  }
+  #combo.on{opacity:1}
+  #best{font-size:12px;color:var(--dim);letter-spacing:1px}
+
+  /* ---------- 面板 ---------- */
+  #panel{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;
+    padding:28px;text-align:center;
+    background:rgba(6,13,26,.62);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    transition:opacity .3s;
+  }
+  #panel.hide{opacity:0;pointer-events:none}
+  #panel h1{
+    margin:0;font-size:30px;font-weight:800;letter-spacing:1px;
+    background:linear-gradient(180deg,#eaf6ff,#5ec8ff);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  #panel .sub{font-size:13px;color:var(--dim);line-height:1.9;max-width:300px}
+  #panel .sub b{color:#bcdcf7;font-weight:600}
+  .btn{
+    appearance:none;border:0;cursor:pointer;
+    padding:14px 40px;border-radius:999px;
+    font-size:17px;font-weight:800;letter-spacing:2px;
+    color:#04101f;
+    background:linear-gradient(180deg,#8fe0ff,#3aa4e8);
+    box-shadow:0 10px 30px rgba(58,164,232,.45),inset 0 1px 0 rgba(255,255,255,.6);
+    transition:transform .12s,box-shadow .12s;
+  }
+  .btn:active{transform:translateY(2px) scale(.98);box-shadow:0 6px 18px rgba(58,164,232,.4)}
+  .final{font-size:44px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums}
+  .finalLabel{font-size:12px;letter-spacing:3px;color:var(--dim)}
+  .badge{font-size:13px;color:var(--warn);letter-spacing:1px;min-height:20px}
+  .keys{font-size:11px;color:#5f7fa5;letter-spacing:.5px;margin-top:4px}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+
+  <div id="hud">
+    <div class="row">
+      <div id="score">0<small>分</small></div>
+      <div id="lives"></div>
+    </div>
+    <div class="row">
+      <div id="best">最高 0</div>
+    </div>
+    <div id="combo"></div>
+  </div>
+
+  <div id="panel">
+    <h1>小气象员 · 接雨滴</h1>
+    <div class="sub">
+      移动<b>水桶</b>接住<b>雨滴</b>得分，<br>
+      躲开<b style="color:#ffd166">冰雹</b>——砸中就掉命。<br>
+      一共 <b>3</b> 条命，看你能接多少。
+    </div>
+    <button class="btn" id="startBtn">开 始</button>
+    <div class="keys">鼠标 / 手指拖动 · 方向键 · 空格暂停</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const stage = document.getElementById('stage');
+  const scoreEl = document.getElementById('score');
+  const livesEl = document.getElementById('lives');
+  const comboEl = document.getElementById('combo');
+  const bestEl = document.getElementById('best');
+  const panel = document.getElementById('panel');
+  const startBtn = document.getElementById('startBtn');
+
+  const BEST_KEY = 'rain_best_v1';
+  const MAX_LIVES = 3;
+
+  let W = 0, H = 0;
+
+  const S = {
+    state: 'ready',          // ready | play | pause | over
+    t: 0,                    // 本局时间
+    score: 0,
+    best: Number(localStorage.getItem(BEST_KEY) || 0),
+    lives: MAX_LIVES,
+    combo: 0,
+    items: [],
+    parts: [],
+    spawnTimer: 0.6,
+    shake: 0,
+    flash: 0,
+    water: 0,                // 底部水位（0-1），跟分数相关
+    bucket: { x: 0, w: 84, y: 0, target: null },
+    keys: { left: false, right: false },
+    rainLines: [],
+    clouds: [],
+    lastTs: 0
+  };
+
+  /* ---------------- 尺寸 ---------------- */
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    W = Math.max(240, Math.round(r.width));
+    H = Math.max(320, Math.round(r.height));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    S.bucket.w = Math.min(96, Math.max(64, W * 0.18));
+    S.bucket.y = H - Math.max(96, H * 0.14);
+    if (!S.bucket.x) S.bucket.x = W / 2;
+    S.bucket.x = clamp(S.bucket.x, S.bucket.w / 2, W - S.bucket.w / 2);
+
+    buildBackdrop();
+  }
+
+  function buildBackdrop() {
+    S.rainLines = [];
+    const n = Math.round(W * H / 9000);
+    for (let i = 0; i < n; i++) {
+      S.rainLines.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        len: 8 + Math.random() * 22,
+        sp: 260 + Math.random() * 520,
+        a: 0.06 + Math.random() * 0.16,
+        w: Math.random() < 0.25 ? 1.4 : 0.9
+      });
+    }
+    S.clouds = [];
+    for (let i = 0; i < 4; i++) {
+      S.clouds.push({
+        x: W * (0.1 + Math.random() * 0.8),
+        y: H * (0.06 + Math.random() * 0.16),
+        r: 26 + Math.random() * 40,
+        a: 0.035 + Math.random() * 0.05,
+        sp: 6 + Math.random() * 10
+      });
+    }
+  }
+
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  /* ---------------- HUD ---------------- */
+  function paintHud() {
+    scoreEl.innerHTML = S.score + '<small>分</small>';
+    bestEl.textContent = '最高 ' + S.best;
+    livesEl.innerHTML = '';
+    for (let i = 0; i < MAX_LIVES; i++) {
+      const d = document.createElement('div');
+      d.className = 'life' + (i < S.lives ? '' : ' off');
+      livesEl.appendChild(d);
+    }
+  }
+
+  function paintCombo() {
+    if (S.combo >= 3) {
+      comboEl.textContent = '连击 ×' + S.combo;
+      comboEl.classList.add('on');
+    } else {
+      comboEl.classList.remove('on');
+    }
+  }
+
+  /* ---------------- 生成物 ---------------- */
+  function spawn() {
+    const hailChance = Math.min(0.30, 0.08 + S.t * 0.005);
+    const isHail = Math.random() < hailChance;
+    const r = isHail ? rand(8, 11) : rand(5, 7.5);
+    const margin = r + 14;
+    S.items.push({
+      type: isHail ? 'hail' : 'drop',
+      x: rand(margin, W - margin),
+      y: -r - 10,
+      r,
+      vy: (isHail ? 285 : 210) + S.t * 6.0 + rand(0, 90),
+      wob: rand(0, Math.PI * 2),
+      rot: rand(0, Math.PI * 2),
+      vy2: 0
+    });
+  }
+
+  function burst(x, y, color, n, power) {
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, Math.PI * 2);
+      const sp = rand(power * 0.25, power);
+      S.parts.push({
+        x, y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - rand(20, 90),
+        life: rand(0.35, 0.8),
+        max: 0.8,
+        r: rand(1.4, 3.6),
+        c: color
+      });
+    }
+  }
+
+  /* ---------------- 更新 ---------------- */
+  function update(dt) {
+    // 背景雨丝一直动
+    for (const l of S.rainLines) {
+      l.y += l.sp * dt;
+      l.x -= l.sp * 0.14 * dt;
+      if (l.y > H + 30) { l.y = -30; l.x = Math.random() * W; }
+      if (l.x < -20) l.x = W + 10;
+    }
+    for (const c of S.clouds) {
+      c.x += c.sp * dt;
+      if (c.x - c.r > W) c.x = -c.r;
+    }
+
+    // 粒子
+    for (let i = S.parts.length - 1; i >= 0; i--) {
+      const p = S.parts[i];
+      p.vy += 900 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) S.parts.splice(i, 1);
+    }
+
+    if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 34);
+    if (S.flash > 0) S.flash = Math.max(0, S.flash - dt * 2.4);
+
+    if (S.state !== 'play') return;
+
+    S.t += dt;
+
+    /* --- 木桶移动 --- */
+    const b = S.bucket;
+    const half = b.w / 2;
+    const speed = 640;
+    let dir = 0;
+    if (S.keys.left) dir -= 1;
+    if (S.keys.right) dir += 1;
+
+    if (dir !== 0) {
+      b.x += dir * speed * dt;
+      b.target = null;
+    } else if (b.target !== null) {
+      b.x += (b.target - b.x) * Math.min(1, dt * 16);
+    }
+    b.x = clamp(b.x, half, W - half);
+
+    /* --- 生成 --- */
+    S.spawnTimer -= dt;
+    if (S.spawnTimer <= 0) {
+      spawn();
+      const base = Math.max(0.30, 0.92 - S.t * 0.014);
+      S.spawnTimer = base * rand(0.72, 1.25);
+    }
+
+    /* --- 下落与碰撞 --- */
+    const top = b.y;
+    for (let i = S.items.length - 1; i >= 0; i--) {
+      const it = S.items[i];
+      it.y += it.vy * dt;
+      it.vy += 120 * dt;
+      it.rot += dt * (it.type === 'hail' ? 3.2 : 1.1);
+      it.wob += dt * 3;
+
+      const hitX = Math.abs(it.x - b.x) < half + it.r * 0.55;
+      const hitY = it.y + it.r >= top && it.y - it.r < top + b.w * 0.34;
+
+      if (hitX && hitY && it.y > 0) {
+        if (it.type === 'drop') {
+          S.combo++;
+          const gain = 1 + Math.floor(S.combo / 5);
+          S.score += gain;
+          S.water = Math.min(1, S.water + 0.012);
+          burst(it.x, top, 'rgba(120,215,255,', 8, 190);
+          S.items.splice(i, 1);
+          paintHud();
+          paintCombo();
+        } else {
+          S.lives--;
+          S.combo = 0;
+          S.shake = 13;
+          S.flash = 0.5;
+          burst(it.x, top, 'rgba(225,240,255,', 16, 300);
+          S.items.splice(i, 1);
+          paintHud();
+          paintCombo();
+          if (S.lives <= 0) { gameOver(); return; }
+        }
+        continue;
+      }
+
+      if (it.y - it.r > H + 40) {
+        if (it.type === 'drop') { S.combo = 0; paintCombo(); }
+        S.items.splice(i, 1);
+      }
+    }
+
+    // 分数涨了水位也涨一点（氛围）
+    paintCombo();
+  }
+
+  /* ---------------- 绘制 ---------------- */
+  function drawBackground() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#0a1830');
+    g.addColorStop(0.45, '#102c52');
+    g.addColorStop(0.78, '#0d2038');
+    g.addColorStop(1, '#071322');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // 云
+    for (const c of S.clouds) {
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(160,205,255,' + c.a + ')';
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      ctx.arc(c.x + c.r * 0.7, c.y + c.r * 0.16, c.r * 0.72, 0, Math.PI * 2);
+      ctx.arc(c.x - c.r * 0.72, c.y + c.r * 0.2, c.r * 0.62, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 背景雨丝
+    ctx.lineCap = 'round';
+    for (const l of S.rainLines) {
+      ctx.strokeStyle = 'rgba(150,205,255,' + l.a + ')';
+      ctx.lineWidth = l.w;
+      ctx.beginPath();
+      ctx.moveTo(l.x, l.y);
+      ctx.lineTo(l.x - l.len * 0.22, l.y + l.len);
+      ctx.stroke();
+    }
+
+    // 闪电
+    if (S.flash > 0.05) {
+      ctx.fillStyle = 'rgba(190,225,255,' + (S.flash * 0.22) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // 底部积水
+    const waterH = 34 + S.water * 30;
+    const wy = H - waterH;
+    const wg = ctx.createLinearGradient(0, wy, 0, H);
+    wg.addColorStop(0, 'rgba(70,150,215,.28)');
+    wg.addColorStop(1, 'rgba(20,60,105,.55)');
+    ctx.fillStyle = wg;
+    ctx.beginPath();
+    ctx.moveTo(0, wy + Math.sin(S.t * 1.6) * 3);
+    for (let x = 0; x <= W; x += 12) {
+      ctx.lineTo(x, wy + Math.sin(x * 0.02 + S.t * 1.6) * 3);
+    }
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawDrop(it) {
+    const r = it.r;
+    ctx.save();
+    ctx.translate(it.x, it.y);
+    ctx.rotate(Math.sin(it.wob) * 0.16);
+    const g = ctx.createLinearGradient(0, -r * 2.4, 0, r * 1.4);
+    g.addColorStop(0, 'rgba(190,240,255,.95)');
+    g.addColorStop(0.55, 'rgba(94,200,255,.92)');
+    g.addColorStop(1, 'rgba(52,140,220,.9)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 2.5);
+    ctx.bezierCurveTo(r * 1.15, -r * 0.5, r * 1.05, r * 1.15, 0, r * 1.15);
+    ctx.bezierCurveTo(-r * 1.05, r * 1.15, -r * 1.15, -r * 0.5, 0, -r * 2.5);
+    ctx.fill();
+    // 高光
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.3, -r * 0.25, r * 0.24, r * 0.42, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawHail(it) {
+    const r = it.r;
+    ctx.save();
+    ctx.translate(it.x, it.y);
+    ctx.rotate(it.rot);
+
+    // 拖尾
+    ctx.strokeStyle = 'rgba(200,230,255,.22)';
+    ctx.lineWidth = r * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 3.4);
+    ctx.lineTo(0, -r * 0.4);
+    ctx.stroke();
+
+    const g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.15, 0, 0, r * 1.05);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.6, '#dcebff');
+    g.addColorStop(1, '#9dbfe6');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r * 0.86, -r * 0.5);
+    ctx.lineTo(r * 0.86, r * 0.5);
+    ctx.lineTo(0, r);
+    ctx.lineTo(-r * 0.86, r * 0.5);
+    ctx.lineTo(-r * 0.86, -r * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.75)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawBucket() {
+    const b = S.bucket;
+    const half = b.w / 2;
+    const x = b.x, y = b.y, h = b.w * 0.66;
+    const top = half, bot = half * 0.74;
+
+    ctx.save();
+
+    // 地面阴影
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + h + 6, half * 0.95, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 桶身
+    const g = ctx.createLinearGradient(x - top, 0, x + top, 0);
+    g.addColorStop(0, '#1d5d9c');
+    g.addColorStop(0.35, '#3f9be0');
+    g.addColorStop(0.62, '#5cc0f7');
+    g.addColorStop(1, '#19507f');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x - top, y);
+    ctx.lineTo(x + top, y);
+    ctx.lineTo(x + bot, y + h);
+    ctx.quadraticCurveTo(x, y + h + 10, x - bot, y + h);
+    ctx.closePath();
+    ctx.fill();
+
+    // 桶口
+    ctx.fillStyle = 'rgba(10,32,58,.85)';
+    ctx.beginPath();
+    ctx.ellipse(x, y, top, top * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(160,225,255,.85)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(x, y, top, top * 0.28, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 桶身反光条
+    ctx.fillStyle = 'rgba(220,245,255,.16)';
+    ctx.beginPath();
+    ctx.moveTo(x - top * 0.55, y + h * 0.18);
+    ctx.lineTo(x - top * 0.2, y + h * 0.18);
+    ctx.lineTo(x - top * 0.32, y + h * 0.92);
+    ctx.lineTo(x - top * 0.6, y + h * 0.92);
+    ctx.closePath();
+    ctx.fill();
+
+    // 提手
+    ctx.strokeStyle = 'rgba(190,230,255,.5)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(x, y - top * 0.1, top * 0.62, top * 0.5, 0, Math.PI * 1.08, Math.PI * 1.92);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawParts() {
+    for (const p of S.parts) {
+      const a = clamp(p.life / p.max, 0, 1);
+      ctx.fillStyle = p.c + a.toFixed(2) + ')';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * (0.4 + a * 0.8), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function render() {
+    ctx.save();
+    if (S.shake > 0.2) {
+      ctx.translate(rand(-S.shake, S.shake) * 0.6, rand(-S.shake, S.shake) * 0.6);
+    }
+    drawBackground();
+    for (const it of S.items) {
+      if (it.type === 'drop') drawDrop(it); else drawHail(it);
+    }
+    drawParts();
+    drawBucket();
+    ctx.restore();
+
+    if (S.state === 'pause') {
+      ctx.fillStyle = 'rgba(6,13,26,.6)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#cfe6ff';
+      ctx.font = '700 22px system-ui,-apple-system,"PingFang SC",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('已暂停', W / 2, H / 2);
+      ctx.font = '400 13px system-ui,-apple-system,"PingFang SC",sans-serif';
+      ctx.fillStyle = '#7fa3c8';
+      ctx.fillText('按空格继续', W / 2, H / 2 + 26);
+    }
+  }
+
+  /* ---------------- 流程 ---------------- */
+  function reset() {
+    S.t = 0;
+    S.score = 0;
+    S.lives = MAX_LIVES;
+    S.combo = 0;
+    S.items = [];
+    S.parts = [];
+    S.spawnTimer = 0.55;
+    S.shake = 0;
+    S.flash = 0;
+    S.water = 0;
+    S.bucket.x = W / 2;
+    S.bucket.target = null;
+    paintHud();
+    paintCombo();
+  }
+
+  function startGame() {
+    reset();
+    S.state = 'play';
+    panel.classList.add('hide');
+  }
+
+  function gameOver() {
+    S.state = 'over';
+    S.best = Math.max(S.best, S.score);
+    localStorage.setItem(BEST_KEY, String(S.best));
+    paintHud();
+    panel.innerHTML =
+      '<div class="finalLabel">本局得分</div>' +
+      '<div class="final">' + S.score + '</div>' +
+      '<div class="badge">' + (S.best === S.score && S.score > 0 ? '新纪录！' : '最高 ' + S.best) + '</div>' +
+      '<button class="btn" id="againBtn">再 来 一 局</button>';
+    panel.classList.remove('hide');
+    document.getElementById('againBtn').addEventListener('click', startGame);
+  }
+
+  function togglePause() {
+    if (S.state === 'play') { S.state = 'pause'; }
+    else if (S.state === 'pause') { S.state = 'play'; S.lastTs = 0; }
+  }
+
+  /* ---------------- 输入 ---------------- */
+  function pointerTo(clientX) {
+    const r = cv.getBoundingClientRect();
+    S.bucket.target = clamp(clientX - r.left, S.bucket.w / 2, W - S.bucket.w / 2);
+  }
+
+  stage.addEventListener('pointermove', (e) => {
+    if (S.state !== 'play') return;
+    pointerTo(e.clientX);
+  }, { passive: true });
+
+  stage.addEventListener('pointerdown', (e) => {
+    if (S.state !== 'play') return;
+    pointerTo(e.clientX);
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { S.keys.left = true; }
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { S.keys.right = true; }
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (S.state === 'ready' || S.state === 'over') {
+        if (document.getElementById('startBtn')) startBtn.click();
+        else { const b = document.getElementById('againBtn'); if (b) b.click(); }
+      } else togglePause();
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') S.keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') S.keys.right = false;
+  });
+
+  startBtn.addEventListener('click', startGame);
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+
+  /* ---------------- 主循环 ---------------- */
+  function loop(ts) {
+    if (!S.lastTs) S.lastTs = ts;
+    let dt = (ts - S.lastTs) / 1000;
+    S.lastTs = ts;
+    if (dt > 0.05) dt = 0.05;   // 切标签页回来不跳帧
+    update(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  resize();
+  paintHud();
+  paintCombo();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
