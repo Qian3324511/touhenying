@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>遛弯勇者 · WALKER HERO</title>
+<style>
+  :root{
+    --bg:#0b1020; --bg2:#121a2e; --panel:#141d33; --panel2:#1b2740;
+    --line:#26344f; --ink:#eaf1fb; --dim:#93a7c4; --dim2:#6b7f9c;
+    --gold:#f0b95c; --green:#5ed08a; --blue:#5aa9f0; --red:#f06565;
+    --p1:#e8d7b0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:16px;line-height:1.6;user-select:none;overflow:hidden}
+  #app{height:100%;display:flex;flex-direction:column;max-width:1180px;margin:0 auto;padding:8px 12px 10px;gap:8px}
+
+  /* ---------- 顶栏 ---------- */
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex:none}
+  .logo{font-size:20px;font-weight:800;letter-spacing:2px}
+  .logo small{font-size:10px;color:var(--dim2);letter-spacing:3px;margin-left:6px;font-weight:600}
+  .rank{font-size:13px;color:var(--dim);letter-spacing:1px}
+  .rank b{font-size:15px}
+  .power{display:flex;align-items:baseline;gap:6px;margin-left:auto}
+  .power .v{font-size:26px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;letter-spacing:.5px}
+  .power .k{font-size:11px;color:var(--dim2);letter-spacing:2px}
+  .delta{font-size:12px;color:var(--green);font-variant-numeric:tabular-nums}
+  .topbtns{display:flex;gap:8px}
+  .tb{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;
+    padding:8px 14px;font-size:14px;cursor:pointer;min-height:40px}
+  .tb.on{background:#22304d;border-color:var(--gold);color:var(--gold)}
+
+  /* ---------- 主区 ---------- */
+  main{flex:1;min-height:0;display:grid;grid-template-columns:1fr 340px;gap:10px}
+  .stage{position:relative;background:#0a0f1c;border:1px solid var(--line);border-radius:16px;overflow:hidden;min-height:0}
+  #cv{display:block;width:100%;height:100%}
+  .stageInfo{position:absolute;left:14px;top:12px;font-size:13px;color:#cfdcef;letter-spacing:1px;
+    text-shadow:0 2px 8px #000;pointer-events:none;width:220px}
+  .stageInfo .stageSub{font-size:11px;color:#8fa6c4;letter-spacing:0;margin-top:3px}
+  .bar.thin{height:4px;margin-top:6px}
+  .stageInfo b{font-size:16px;color:#fff}
+  .bossBar{position:absolute;left:50%;top:12px;transform:translateX(-50%);width:min(70%,520px);
+    display:none;text-align:center;pointer-events:none}
+  .bossBar.on{display:block}
+  .bossBar .name{font-size:14px;color:#ffd7a8;letter-spacing:2px;text-shadow:0 2px 8px #000;margin-bottom:4px}
+  .bossBar .track{height:12px;background:rgba(0,0,0,.6);border:1px solid #6b4a2a;border-radius:8px;overflow:hidden}
+  .bossBar .fill{height:100%;width:100%;background:linear-gradient(90deg,#ff8a4c,#ffd27a);transition:width .2s}
+
+  /* ---------- 侧栏 ---------- */
+  aside{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;padding-right:2px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 11px}
+  .card h3{margin:0 0 8px;font-size:11px;letter-spacing:2px;color:var(--dim2);font-weight:700}
+  .lvline{display:flex;align-items:baseline;gap:8px}
+  .lvline .lv{font-size:22px;font-weight:800}
+  .lvline .sub{font-size:12px;color:var(--dim)}
+  .bar{height:10px;background:#0d1424;border-radius:6px;overflow:hidden;margin-top:6px;border:1px solid #1e2b42}
+  .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4f8fd8,#7fd0ff);transition:width .25s}
+  .bar.gold > i{background:linear-gradient(90deg,#c98a2a,#f0c060)}
+  .bar.green > i{background:linear-gradient(90deg,#2f9b62,#5ed08a)}
+  .kv{display:flex;justify-content:space-between;font-size:13px;color:var(--dim);margin-top:4px}
+  .kv b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+  .eqgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .eqbox{background:#101a2c;border:1px solid #223252;border-radius:9px;padding:4px 4px;text-align:center;
+    min-height:46px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:1px;position:relative}
+  .eqbox .sl{font-size:9.5px;color:var(--dim2)}
+  .eqbox .nm{font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .eqbox .en{font-size:9px;color:var(--gold)}
+  .eqbox.empty .nm{color:#41536e;font-weight:400}
+
+  .rowb{display:flex;gap:6px;flex-wrap:wrap}
+  .btn{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:10px;
+    padding:9px 14px;font-size:14px;cursor:pointer;min-height:44px;transition:.15s}
+  .btn:hover{border-color:#3a527a}
+  .btn:disabled{opacity:.4;cursor:default}
+  .btn.gold{border-color:#6b5227;background:#2a2214;color:var(--gold)}
+  .btn.go{background:linear-gradient(180deg,#2b6fb0,#1d4f80);border-color:#3f86c9;color:#eaf6ff;font-weight:700}
+  .chest{display:flex;gap:6px}
+  .chest .c{flex:1;text-align:center;background:#101a2c;border:1px solid #24344f;border-radius:10px;
+    padding:7px 4px;cursor:pointer;transition:.15s}
+  .chest .c:hover{border-color:var(--gold)}
+  .chest .c.zero{opacity:.35;cursor:default}
+  .chest .c .ic{font-size:18px;line-height:1.1}
+  .chest .c .n{font-size:10px;color:var(--dim)}
+
+  /* ---------- 战报 ---------- */
+  footer{flex:none;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:8px 12px;height:112px;overflow:hidden;position:relative;
+    display:flex;gap:10px;align-items:stretch}
+  .fbtns{display:flex;flex-direction:column;gap:5px;width:104px;flex:none}
+  .fbtns .btn{flex:1;font-size:12.5px;padding:0;min-height:0}
+  #log{font-size:13.5px;line-height:1.72;color:#c3d4e8;display:flex;flex-direction:column;justify-content:flex-start;height:100%;overflow:hidden}
+  #log div{opacity:.5}
+  #log div:nth-child(1){opacity:1}
+  #log div:nth-child(2){opacity:.86}
+  #log div:nth-child(3){opacity:.7}
+  #log div:nth-child(4){opacity:.56}
+  .log-hi{color:var(--gold)}
+  .log-good{color:var(--green)}
+  .log-bad{color:#ff9a8a}
+
+  /* ---------- 卡片浮层 ---------- */
+  .pop{position:fixed;inset:0;background:rgba(4,8,16,.72);display:none;align-items:center;justify-content:center;
+    z-index:40;padding:18px;backdrop-filter:blur(4px)}
+  .pop.on{display:flex}
+  .popIn{background:linear-gradient(180deg,#1b2740,#141d33);border:1px solid #33456a;border-radius:18px;
+    padding:20px;width:100%;max-width:430px;box-shadow:0 40px 90px -30px #000}
+  .popIn h2{margin:0 0 4px;font-size:18px;letter-spacing:1px}
+  .popIn .sub{font-size:12.5px;color:var(--dim);margin-bottom:12px}
+  .popIn .big{font-size:30px;font-weight:800;color:var(--gold);text-align:center;margin:8px 0 4px}
+  .popIn .list{font-size:13px;color:#c6d6ea;max-height:220px;overflow:auto}
+  .popIn .list .it{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1d2a44}
+  .popIn .btns{display:flex;gap:8px;margin-top:14px}
+  .popIn .btns .btn{flex:1}
+
+  /* 掉落对比卡（不阻塞） */
+  #compare{position:fixed;left:50%;top:96px;transform:translateX(-50%);width:min(440px,calc(100vw - 32px));
+    background:linear-gradient(180deg,#1d3050,#16243c);border:1px solid #4a7bb8;
+    border-radius:13px;padding:9px 14px;box-shadow:0 18px 44px -16px #000;z-index:30;
+    display:none;align-items:center;gap:12px;flex-wrap:wrap}
+  #compare.on{display:flex;animation:slidein .22s ease-out}
+  @keyframes slidein{from{transform:translate(-50%,-12px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+  #compare .cn{font-size:13.5px;font-weight:700;white-space:nowrap}
+  #compare .aff{flex:1;min-width:110px;font-size:11.5px;color:#a8c2e0;line-height:1.5}
+  #compare .cmp{font-size:13px;color:var(--green);white-space:nowrap;font-weight:700}
+  #compare .br{display:flex;gap:6px;margin:0}
+  #compare .br .btn{flex:1;padding:8px;min-height:40px}
+
+  /* 突破特效 */
+  #breakfx{position:fixed;inset:0;pointer-events:none;z-index:35;display:none;
+    background:radial-gradient(circle at 50% 45%,rgba(255,214,120,.45),transparent 60%)}
+  #breakfx.on{display:block;animation:flash 1.6s ease-out}
+  @keyframes flash{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+  #breakfx .txt{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
+    font-size:30px;font-weight:800;color:#ffe6a8;text-shadow:0 0 30px #ffb84c,0 4px 10px #000;letter-spacing:4px}
+
+  @media (max-height:720px) and (min-width:901px){
+    aside{gap:6px}
+    .card{padding:5px 9px}
+    .card h3{margin:0 0 5px;font-size:12px}
+    .eqbox{min-height:36px;padding:1px}
+    .eqbox .nm{font-size:10.5px}
+    .bar{height:5px}
+    #log{font-size:12.5px;line-height:1.6}
+    footer{height:96px}
+    #compare{top:74px}
+  }
+  @media (max-width:900px){
+    #app{height:auto;min-height:100%;overflow:auto}
+    main{grid-template-columns:1fr}
+    .stage{height:44vh;min-height:260px}
+    footer{height:84px;position:sticky;bottom:0;z-index:20;background:#0d1626;
+      box-shadow:0 -12px 24px -12px #000;padding:8px 10px}
+    #compare{top:auto;bottom:12px;left:12px;right:12px;width:auto;transform:none}
+    @keyframes slidein{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+    .power .v{font-size:20px}
+    header{padding:8px 10px;gap:6px;flex-wrap:nowrap;overflow:hidden}
+    .logo,.power,.topbtns{white-space:nowrap;flex-shrink:0}
+    .logo{font-size:14px;gap:4px}
+    .logo small{display:none}
+    .rank{display:none}
+    .tb{padding:6px 8px;font-size:12px;min-height:32px;white-space:nowrap}
+    .power{gap:3px}
+    .power .k{font-size:10.5px}
+    .power .v{font-size:18px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">遛弯勇者<small>WALKER HERO</small></div>
+    <div class="rank">阶位 <b id="rankName" style="color:#c9b6ff">一阶 · 初入</b></div>
+    <div class="power">
+      <span class="k">战力</span>
+      <span class="v" id="powerVal">1,000</span>
+      <span class="delta" id="powerDelta"></span>
+    </div>
+    <div class="topbtns">
+      <button class="tb" id="btnAuto">托管</button>
+      <button class="tb" id="btnSet">设置</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage" id="stage">
+      <canvas id="cv"></canvas>
+      <div class="stageInfo"><b id="regionName">第 1 区</b> <span id="distInfo">0 / 5000 米</span>
+        <div class="stageSub"><span id="regionNeed">本区门槛 1,400</span> · <span id="nextBoss">Boss 还有 5000 米</span></div>
+        <div class="bar gold thin"><i id="distFill"></i></div>
+      </div>
+      <div class="bossBar" id="bossBar">
+        <div class="name" id="bossName">中年危机</div>
+        <div class="track"><div class="fill" id="bossFill"></div></div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="card">
+        <div class="lvline"><span class="lv" id="lvVal">1</span><span class="sub">级</span>
+          <span class="sub" style="margin-left:auto" id="realmInfo">境界 0 · 上限 60</span></div>
+        <div class="bar"><i id="expFill"></i></div>
+        <div class="kv"><span>经验</span><b id="expTxt">0 / 100</b></div>
+      </div>
+
+      <div class="card">
+        <h3>装备</h3>
+        <div class="eqgrid" id="eqGrid"></div>
+      </div>
+
+      <div class="card">
+        <div class="kv"><span>材料 <b id="matsVal">0</b> · 击杀 <b id="killsVal">0</b></span>
+          <b style="color:var(--dim2);font-weight:600">背包 <span id="bagCount">0</span></b></div>
+        <div class="chest" id="chestRow"></div>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <div class="fbtns">
+      <button class="btn go" id="btnBest">一键最优</button>
+      <button class="btn" id="btnBag">背包</button>
+      <button class="btn" id="btnOpenAll">开箱</button>
+    </div>
+    <div id="log"></div>
+  </footer>
+</div>
+
+<div id="compare">
+  <div class="cn" id="cmpName">装备</div>
+  <div class="aff" id="cmpAff"></div>
+  <div class="cmp" id="cmpVal"></div>
+  <div class="br">
+    <button class="btn go" id="cmpWear">换上</button>
+    <button class="btn" id="cmpDrop">分解</button>
+  </div>
+</div>
+
+<div id="breakfx"><div class="txt" id="breakTxt">你已踏入第二境</div></div>
+
+<div class="pop" id="pop"><div class="popIn" id="popIn"></div></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= 常量（对齐设计文档第 7 章 / 数值体检表） ================= */
+const ELEMS = ['金','木','水','火','土'];
+const COUNTER = { '金':'木','木':'土','土':'水','水':'火','火':'金' };
+const ELEM_COLOR = { '金':'#d8dbe0','木':'#6fcf7a','水':'#5aa9f0','火':'#f0714a','土':'#c9a06a' };
+const P = {
+  growth: [[30,1.10],[60,1.08],[90,1.06],[120,1.05],[1e9,1.03]],
+  realmCaps: [60,90,120,150],
+  realmBonus: 1.25,
+  equipCap0: 2.9, equipCapGrowth: 1.22, elemCap: 1.80,
+  regionNeed0: 1400, regionGrowth: 1.28,
+  mobHp0: 3300, bossHpMul: 20,
+  regionLen: 5000, bossLen: 5000,
+  walkSpeed: 62,              // 米/秒，一区约 80 秒
+  offlineCapHours: 12,
+};
+const QUALITY = [
+  {k:'white',  name:'普通', color:'#c9d2db', affixes:1, w:580, mul:0.65},
+  {k:'green',  name:'优秀', color:'#6fcf7a', affixes:2, w:260, mul:0.85},
+  {k:'blue',   name:'精良', color:'#5aa9f0', affixes:3, w:110, mul:1.00},
+  {k:'purple', name:'史诗', color:'#b07cf0', affixes:4, w:36,  mul:1.15},
+  {k:'orange', name:'传说', color:'#f0a840', affixes:5, w:12,  mul:1.30},
+  {k:'red',    name:'神话', color:'#f05a5a', affixes:5, w:1.8, mul:1.50},
+];
+const QMAP = {}; QUALITY.forEach(q => QMAP[q.k] = q);
+const SLOTS = ['武器','副手','头盔','衣服','腰带','鞋子','项链','戒指1','戒指2'];
+const AFFIXES = [
+  {k:'atk',     name:'攻击',       min:5,  max:10, type:'mul'},
+  {k:'life',    name:'生命',       min:8,  max:15, type:'surv'},
+  {k:'elemAtk', name:'元素攻击',   min:6,  max:12, type:'mul'},
+  {k:'elemRes', name:'元素抗性',   min:5,  max:10, type:'res'},
+  {k:'allRes',  name:'全元素抗性', min:2,  max:5,  type:'res'},
+  {k:'crit',    name:'暴击率',     min:2,  max:5,  type:'crit'},
+  {k:'critDmg', name:'暴击伤害',   min:8,  max:20, type:'crit'},
+  {k:'drop',    name:'掉落率',     min:3,  max:8,  type:'util'},
+  {k:'speed',   name:'移动速度',   min:2,  max:6,  type:'util'},
+];
+const AMAP = {}; AFFIXES.forEach(a => AMAP[a.k] = a);
+const MOB_NAMES = ['加班怨念','房贷幽灵','体检报告兽','微信群未读','亲戚的灵魂拷问','堵车的焦躁','水电费通知'];
+const LEADER_NAMES = ['会议室里的老王','催稿的甲方','堵在门口的电动车'];
+const BOSS_NAMES = ['中年危机','发际线守卫','体检单之魔','KPI 巨像','房贷魔王','老板的凝视'];
+
+/* ================= 工具 ================= */
+const $ = s => document.querySelector(s);
+const rnd = (a,b) => a + Math.random()*(b-a);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+function fmt(n){
+  n = Math.round(n);
+  if (n >= 1e8) return (n/1e8).toFixed(2) + ' 亿';
+  if (n >= 1e4) return (n/1e4).toFixed(1) + ' 万';
+  return n.toLocaleString('en-US');
+}
+function fmtFull(n){ return Math.round(n).toLocaleString('en-US'); }
+
+/* ================= 数值 ================= */
+function growthRate(L){
+  for (const [cap,r] of P.growth) if (L <= cap) return r;
+  return 1.03;
+}
+function basePower(L, realm){
+  let v = 1000;
+  for (let i=1;i<L;i++) v *= growthRate(i);
+  return v * Math.pow(P.realmBonus, realm);
+}
+function equipBonuses(equips, realm){
+  const sum = { atk:0, life:0, crit:0, critDmg:0, drop:0, speed:0 };
+  const elemAtk = {金:0,木:0,水:0,火:0,土:0};
+  const elemRes = {金:0,木:0,水:0,火:0,土:0};
+  let allRes = 0;
+  for (const eq of equips){
+    if (!eq) continue;
+    sum.atk += (eq.enh||0) * 1.5;
+    sum.life += (eq.enh||0) * 1.5;
+    for (const a of eq.affixes){
+      if (a.k === 'elemAtk') elemAtk[a.elem] += a.v;
+      else if (a.k === 'elemRes') elemRes[a.elem] += a.v;
+      else if (a.k === 'allRes') allRes += a.v;
+      else if (sum[a.k] != null) sum[a.k] += a.v;
+    }
+  }
+  const capAtk = (P.equipCap0 * Math.pow(P.equipCapGrowth, realm) - 1) * 100;
+  sum.atk = Math.min(sum.atk, capAtk);
+  const elemTotal = ELEMS.reduce((s,e)=>s+elemAtk[e],0);
+  const capElem = (P.elemCap - 1) * 100;
+  if (elemTotal > capElem){ const k = capElem/elemTotal; for (const e of ELEMS) elemAtk[e] *= k; }
+  for (const e of ELEMS) elemRes[e] = Math.min(elemRes[e], 75);
+  allRes = Math.min(allRes, 40);
+  sum.crit = Math.min(sum.crit, 60);
+  sum.critDmg = Math.min(sum.critDmg, 300);
+  return { atk:sum.atk, life:sum.life, crit:sum.crit, critDmg:sum.critDmg,
+           drop:sum.drop, speed:sum.speed, elemAtk, elemRes, allRes };
+}
+function playerPower(L, realm, equips){
+  const base = basePower(L, realm);
+  const b = equipBonuses(equips, realm);
+  const equipMul = 1 + b.atk/100;
+  let maxElem = 0, topElem = '金';
+  for (const e of ELEMS) if (b.elemAtk[e] > maxElem){ maxElem = b.elemAtk[e]; topElem = e; }
+  const elemMul = 1 + maxElem/100;
+  return { base, equipMul, elemMul, total: base*equipMul*elemMul, bonuses:b, topElem };
+}
+const mobHp    = r => P.mobHp0 * Math.pow(P.regionGrowth, r-1);
+const bossHp   = r => mobHp(r) * P.bossHpMul;
+const regionNeed = r => P.regionNeed0 * Math.pow(P.regionGrowth, r-1);
+
+/* 升级经验：前期快、后期慢，但永远有反馈 */
+function expNeed(L){ return Math.round(55 * Math.pow(1.30, L-1)); }
+
+/* ================= 装备生成 ================= */
+let _eid = 1;
+function pickQuality(bias){
+  const total = QUALITY.reduce((s,q)=>s+q.w,0);
+  let x = Math.random() * total;
+  if (bias) x *= bias;           // bias<1 偏向高品质
+  for (const q of QUALITY){ x -= q.w; if (x <= 0) return q; }
+  return QUALITY[0];
+}
+function genEquip(level, quality, forceElem){
+  const q = quality || pickQuality();
+  const slot = pick(SLOTS);
+  const used = new Set();
+  const affixes = [];
+  for (let i=0;i<q.affixes;i++){
+    let pool = AFFIXES.filter(a=>!used.has(a.k));
+    if (!pool.length) pool = AFFIXES.slice();
+    if (i === 0){ // 第一条必带输出向，避免白装全是垃圾
+      const p2 = pool.filter(a=>a.type==='mul');
+      if (p2.length) pool = p2;
+    }
+    const a = pick(pool);
+    used.add(a.k);
+    let elem = null;
+    if (a.k === 'elemAtk' || a.k === 'elemRes') elem = forceElem || pick(ELEMS);
+    affixes.push({ k:a.k, name:(elem?elem:'') + a.name, v:+(rnd(a.min,a.max)*q.mul).toFixed(1), elem, type:a.type });
+  }
+  const pre = ['破旧','结实','锋利','灼热','寒霜','厚重','轻捷','精准','老派'];
+  return { id:_eid++, slot, q, name: pick(pre) + '的' + slot, level:level||1, affixes, enh:0 };
+}
+function affixText(a){
+  return a.name + ' +' + a.v + '%';
+}
+function equipPower(eq){
+  const arr = S.equip.slice();
+  const i = SLOTS.indexOf(eq.slot);
+  arr[i] = eq;
+  return playerPower(S.lv, S.realm, arr).total;
+}
+
+
+/* ================= 存档与状态 ================= */
+const SAVE_KEY = 'walker_hero_v1';
+let S = null;
+let running = false, lastTs = 0;
+
+function freshState(){
+  return {
+    v:1, lv:1, exp:0, realm:0, mats:0, kills:0,
+    region:1, dist:0,
+    equip: new Array(9).fill(null),
+    bag: [],
+    chests: { wood:0, silver:0, gold:0, elem:0 },
+    auto: false,
+    lastSeen: Date.now(),
+    bestPower: 0,
+  };
+}
+function save(){
+  if (!S) return;
+  S.lastSeen = Date.now();
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch(e){}
+}
+function load(){
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || d.v !== 1) return null;
+    d.equip = (d.equip || []).slice(0,9);
+    while (d.equip.length < 9) d.equip.push(null);
+    d.bag = d.bag || [];
+    d.chests = d.chests || { wood:0, silver:0, gold:0, elem:0 };
+    return d;
+  } catch(e){ return null; }
+}
+
+/* ================= 战报 ================= */
+function pushLog(html, cls){
+  const el = document.getElementById('log');
+  const d = document.createElement('div');
+  d.className = cls || '';
+  d.innerHTML = html;
+  el.insertBefore(d, el.firstChild);
+  while (el.children.length > 12) el.removeChild(el.lastChild);
+}
+
+/* ================= 装备 ================= */
+function currentPower(){ return playerPower(S.lv, S.realm, S.equip).total; }
+
+function tryEquip(eq, silent){
+  const i = SLOTS.indexOf(eq.slot);
+  const before = currentPower();
+  const old = S.equip[i];
+  S.equip[i] = eq;
+  const after = currentPower();
+  if (after < before * 0.995 && old){
+    S.equip[i] = old;
+    S.mats += 12;
+    return false;
+  }
+  const gain = after - before;
+  if (!silent && gain > 0){
+    pushLog('换上 <b>' + eq.name + '</b>（' + QMAP[eq.q.k].name + '）战力 <span class="log-good">+' + fmt(gain) + '</span>', '');
+    showCompare(eq, gain);
+  }
+  return true;
+}
+
+function autoEquipCandidate(eq){
+  const i = SLOTS.indexOf(eq.slot);
+  const cur = S.equip[i];
+  if (!cur) return tryEquip(eq);
+  const before = currentPower();
+  const arr = S.equip.slice(); arr[i] = eq;
+  const after = playerPower(S.lv, S.realm, arr).total;
+  if (after > before * 1.005) return tryEquip(eq);
+  const rare = eq.affixes.some(a => a.k === 'elemRes' || a.k === 'allRes');
+  if (rare && after > before * 0.96 && S.bag.length < 40){
+    S.bag.push(eq);
+    if (S.bag.length > 30){
+      S.bag.sort((a,b) => (b.q.w||0) - (a.q.w||0));
+      while (S.bag.length > 26){ S.bag.pop(); S.mats += 12; }
+    }
+    return false;
+  }
+  S.mats += 12;
+  return false;
+}
+
+function optimizeAll(){
+  let changed = 0;
+  for (let s=0; s<9; s++){
+    let best = S.equip[s], bestP = currentPower();
+    for (let i=S.bag.length-1; i>=0; i--){
+      const eq = S.bag[i];
+      if (SLOTS.indexOf(eq.slot) !== s) continue;
+      const arr = S.equip.slice(); arr[s] = eq;
+      const p = playerPower(S.lv, S.realm, arr).total;
+      if (p > bestP * 1.002){ bestP = p; best = eq; S.bag.splice(i,1); }
+    }
+    if (best && best !== S.equip[s]){
+      if (S.equip[s]) S.bag.push(S.equip[s]);
+      S.equip[s] = best; changed++;
+    }
+  }
+  if (changed) pushLog('一键最优：调整 ' + changed + ' 个部位，战力 ' + fmt(currentPower()), 'log-hi');
+  render();
+}
+
+/* ================= 掉落 ================= */
+function rollQualityByRegion(region){
+  const bias = Math.max(0.35, 0.92 - region*0.02);
+  return pickQuality(bias);
+}
+function dropEquip(quality, elem){
+  const eq = genEquip(S.lv, quality, elem);
+  const better = autoEquipCandidate(eq);
+  return { eq, better };
+}
+function addChest(kind, n){ S.chests[kind] = (S.chests[kind] || 0) + (n||1); }
+
+/* ================= 升级 / 突破 ================= */
+function gainExp(v){
+  S.exp += v;
+  let ups = 0, guard = 0;
+  while (guard++ < 4000){
+    if (S.lv >= realmCap()){
+      checkRealm();
+      if (S.lv < realmCap()) continue;
+      S.exp = Math.min(S.exp, expNeed(S.lv)); break;
+    }
+    if (S.exp < expNeed(S.lv)) break;
+    S.exp -= expNeed(S.lv);
+    S.lv++; ups++;
+  }
+  if (ups > 0) render();
+  return ups;
+}
+function realmCap(){ return 60 + S.realm * 30; }
+function checkRealm(){
+  let guard = 0;
+  while (S.lv >= realmCap() && guard++ < 20){
+    S.realm++;
+    breakFX();
+    pushLog('<b style="color:#ffd98a">你已踏入第' + cn(S.realm) + '境</b>　基础战力 ×1.25，等级上限 +30', 'log-hi');
+  }
+}
+function cn(n){
+  const d = ['零','一','二','三','四','五','六','七','八','九'];
+  if (n < 10) return d[n];
+  if (n < 20) return '十' + (n%10 ? d[n%10] : '');
+  return d[Math.floor(n/10)] + '十' + (n%10 ? d[n%10] : '');
+}
+function breakFX(){
+  const el = document.getElementById('breakfx');
+  document.getElementById('breakTxt').textContent = '你已踏入第' + cn(S.realm) + '境';
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  setTimeout(()=> el.classList.remove('on'), 1700);
+}
+
+/* ================= 自动强化（材料消耗） ================= */
+function enhanceTick(dt){
+  G.enhT = (G.enhT || 0) + dt;
+  if (G.enhT < 1.5) return;
+  G.enhT = 0;
+  for (let i=0;i<9;i++){
+    const idx = (G.enhIdx || 0) + i;
+    const k = idx % 9;
+    const eq = S.equip[k];
+    if (!eq) continue;
+    const lvl = eq.enh || 0;
+    if (lvl >= 15) continue;
+    const cost = Math.round(60 * Math.pow(1.32, lvl));
+    if (S.mats < cost) continue;
+    S.mats -= cost;
+    eq.enh = lvl + 1;
+    G.enhIdx = k + 1;
+    if (eq.enh % 5 === 0) pushLog('装备强化：' + eq.name + ' +' + eq.enh + '（材料 -' + cost + '）', '');
+    return;
+  }
+}
+
+/* ================= 离线 ================= */
+function settleOffline(){
+  const now = Date.now();
+  const gap = Math.max(0, (now - (S.lastSeen || now)) / 1000);
+  const sec = Math.min(gap, P.offlineCapHours * 3600);
+  if (sec < 60) return null;
+  const perSec = 0.62 * 0.7;
+  const kills = Math.floor(sec * perSec);
+  const expEach = Math.max(4, mobHp(S.region) / 100);
+  const exp = Math.floor(kills * expEach);
+  const mats = Math.floor(kills * 5.5);
+  const drops = Math.floor(kills * 0.075);
+  const chests = Math.max(1, Math.floor(drops / 18));
+  S.kills += kills; S.mats += mats;
+  addChest('wood', chests);
+  gainExp(exp);
+  for (let i=0;i<40;i++) enhanceTick(2);
+  pushLog('离线 ' + fmtHours(sec) + '：击杀 ' + fmt(kills) + ' 只，经验 +' + fmt(exp) + '，材料 +' + fmt(mats) + '，木箱 +' + chests, 'log-hi');
+  return { sec, kills, exp, mats, chests };
+}
+function fmtHours(sec){
+  const h = sec/3600;
+  if (h >= 1) return h.toFixed(1) + ' 小时';
+  return Math.round(sec/60) + ' 分钟';
+}
+
+
+
+/* ================= 运行时场景 ================= */
+const G = {
+  mob:null, boss:null, dist:0, fx:[], scroll:0, walk:0,
+  hitT:0, logT:0, spawnT:0, dmgAcc:0, atkAcc:0, bossT:0,
+  speedMul:1, lastLog:0, stuckT:0, offlineGain:null, nextLeader:300,
+};
+
+function playerDps(){
+  const p = playerPower(S.lv, S.realm, S.equip);
+  const b = p.bonuses;
+  const critMul = 1 + (b.crit/100) * (Math.max(100, b.critDmg)/100 - 1);
+  return p.total * critMul;
+}
+function elemMul(atk, def){
+  if (!def || def === '混沌') return 1;
+  if (COUNTER[atk] === def) return 1.3;
+  if (COUNTER[def] === atk) return 0.8;
+  return 1;
+}
+
+function makeMob(kind){
+  const r = S.region;
+  const isBoss = kind === 'boss', isLeader = kind === 'leader';
+  let hp = isBoss ? bossHp(r) : (isLeader ? mobHp(r) * 2 : mobHp(r));
+  const elem = isBoss ? '混沌' : pick(ELEMS);
+  if (!isBoss && elem === '土') hp *= 1.5;           // 土：血厚
+  const m = {
+    kind, elem,
+    name: isBoss ? BOSS_NAMES[(r-1) % BOSS_NAMES.length]
+        : isLeader ? pick(LEADER_NAMES) : pick(MOB_NAMES),
+    hp, maxHp: hp,
+    regen: (!isBoss && elem === '木') ? 0.02 : 0,     // 木：每秒回血 2%
+    armor: (!isBoss && elem === '金') ? 0.25 : 0,     // 金：减伤 25%
+    slow: (!isBoss && elem === '水') ? 0.8 : 1,       // 水：攻速 -20%
+    t: 0, dead: false, fade: 1,
+  };
+  if (isBoss){
+    const need = bossNeed(r);
+    if (r <= 2){ m.need = '新手路段，没有门槛'; m.needOk = true; m.armor = 0; return m; }
+    const b = equipBonuses(S.equip, S.realm);
+    const ok = need.check(b, S);
+    m.need = need.label;
+    m.needOk = ok;
+    m.armor = ok ? 0 : 0.35;
+  }
+  return m;
+}
+
+/* 五种 Boss 门槛（文档 4.2） */
+function bossNeed(region){
+  const idx = (region - 1) % 5;
+  const table = [
+    { el:'木', type:'atk', v:40, label:'需要 木元素攻击 ≥ 40%' },
+    { el:'金', type:'atk', v:35, label:'需要 金元素攻击 ≥ 35%' },
+    { el:'土', type:'res', v:30, label:'需要 土元素抗性 ≥ 30%' },
+    { el:'水', type:'res', v:45, label:'需要 水元素抗性 ≥ 45%' },
+    { el:'',  type:'life', v:0, label:'需要 生命值 ≥ 战力 × 3' },
+  ];
+  const t = table[idx];
+  return {
+    label: t.label,
+    check(b, s){
+      if (t.type === 'atk') return (b.elemAtk[t.el] || 0) >= t.v;
+      if (t.type === 'res') return ((b.elemRes[t.el] || 0) + b.allRes) >= t.v;
+      if (t.type === 'life') return s.lv >= 25;
+      return true;
+    }
+  };
+}
+
+function spawnMob(){
+  if (G.dist >= P.regionLen){ startBoss(); return; }
+  let kind = 'mob';
+  if (G.dist >= G.nextLeader){ G.nextLeader += 300; kind = 'leader'; }
+  G.mob = makeMob(kind);
+  if (kind === 'leader') pushLog('前方出现 <b>' + G.mob.name + '</b>（小队头目）', '');
+}
+
+function startBoss(){
+  G.boss = makeMob('boss');
+  // 保底 18 秒：战力远超需求时也不会一刀秒掉 Boss
+  G.boss.maxHp = Math.max(G.boss.maxHp, playerDps() * 18);
+  G.boss.hp = G.boss.maxHp;
+  G.mob = null;
+  document.getElementById('bossBar').classList.add('on');
+  document.getElementById('bossName').textContent = G.boss.name;
+  pushLog('—— <b>' + G.boss.name + '</b> 挡住了路　<span class="log-bad">' + G.boss.need + '</span>', 'log-hi');
+  if (!G.boss.needOk) pushLog('条件没达标：它的伤害对你更重，打得会很久', 'log-bad');
+  else pushLog('条件达标：打起来很轻松', 'log-good');
+}
+
+function killMob(m){
+  const r = S.region;
+  const isBoss = m.kind === 'boss', isLeader = m.kind === 'leader';
+  S.kills++;
+  const expEach = Math.max(3, m.maxHp / 100);
+  const ups = gainExp(expEach);
+  S.mats += isBoss ? 700 : isLeader ? 45 : Math.round(rnd(3,8));
+  // 掉落
+  if (isBoss){
+    dropEquip('orange');
+    addChest('gold', 1);
+    addChest('silver', 1);
+    // 过关奖励按当前战力/门槛的比值自适应：太强就少给，吃力就多给
+    const rNeed = regionNeed(S.region) || 1;
+    const ratio = currentPower() / rNeed;
+    let bonusLv = Math.round(Math.log(Math.max(0.04, 1.3 / ratio)) / Math.log(1.1));
+    bonusLv = Math.max(1, Math.min(10, bonusLv));
+    for (let i=0;i<bonusLv;i++) gainExp(expNeed(S.lv));
+    pushLog('<b style="color:#f0a840">' + m.name + ' 倒下了。</b>掉落传说装备 + 金箱', 'log-hi');
+    // 区域推进
+    S.region++;
+    G.dist = 0; G.nextLeader = 300;
+    G.boss = null;
+    document.getElementById('bossBar').classList.remove('on');
+    pushLog('—— 第 ' + (S.region-1) + ' 区 · 完 ——　进入第 ' + S.region + ' 区', 'log-hi');
+  } else if (isLeader){
+    dropEquip(rollQualityByRegion(r) === QMAP.white ? QMAP.blue : rollQualityByRegion(r));
+    addChest('silver', 1);
+    pushLog(m.name + ' 倒下了。掉落装备 + 银箱', '');
+  } else {
+    G.dryKills = (G.dryKills || 0) + 1;
+    if (Math.random() < 0.11 || G.dryKills >= 6){
+      G.dryKills = 0;
+      const q = rollQualityByRegion(r);
+      const d = dropEquip(q);
+      if (q.k !== 'white') pushLog(m.name + ' 掉落 <span style="color:' + q.color + '">' + d.eq.name + '</span>', '');
+      addChest('wood', 1);
+    }
+    if (Math.random() < 0.02) addChest('wood', 1);
+    if (Math.random() < 0.008) addChest('elem', 1);
+  }
+  if (ups > 0 && G.lastLog < performance.now() - 1200){
+    pushLog('升级！等级 ' + S.lv + '　战力 ' + fmt(currentPower()), 'log-good');
+    G.lastLog = performance.now();
+  }
+  G.mob = null;
+  G.spawnT = 0.45;
+}
+
+function step(dt){
+  if (!S) return;
+  const fighting = !!(G.mob || G.boss);
+  const speed = P.walkSpeed * (fighting ? 0.55 : 1);
+  if (!G.boss) G.dist += speed * dt;
+  G.scroll += speed * dt;
+  G.walk += dt * (fighting ? 5 : 7);
+  if (G.hitT > 0) G.hitT -= dt;
+  enhanceTick(dt);
+
+  // 生成
+  if (!G.mob && !G.boss){
+    G.spawnT -= dt;
+    if (G.spawnT <= 0) spawnMob();
+  }
+
+  const m = G.boss || G.mob;
+  if (!m) { return; }
+
+  // 玩家输出
+  const dps = playerDps();
+  const b = equipBonuses(S.equip, S.realm);
+  const em = elemMul(b.topElem, m.elem);
+  const slow = m.slow || 1;
+  let dmg = dps * dt * em * slow * (1 - (m.armor || 0));
+  m.hp -= dmg;
+  G.dmgAcc += dmg;
+  if (m.regen) m.hp = Math.min(m.maxHp, m.hp + m.maxHp * m.regen * dt);
+  m.t += dt;
+
+  if (m.hp <= 0){ killMob(m); return; }
+
+  // 飘字（每 0.55 秒一次，避免刷屏）
+  G.atkAcc += dt;
+  if (G.atkAcc >= 0.55){
+    addFx(Math.round(G.dmgAcc), m === G.boss ? '#ffd27a' : '#eaf1fb');
+    G.dmgAcc = 0; G.atkAcc = 0;
+    G.hitT = 0.07;
+  }
+
+  // 苦战领悟：Boss 每掉 25% 血，领悟 1 级
+  if (m === G.boss){
+    const pct = 1 - m.hp / m.maxHp;
+    const ms = Math.floor(pct * 4);
+    if (ms > (m.ms === undefined ? -1 : m.ms)){
+      m.ms = ms;
+      if (ms < 4){
+        gainExp(expNeed(S.lv) * 0.4);
+      }
+    }
+  }
+
+  // 卡关提示与撤退
+  if (m === G.boss && m.t > 22 && !m.warned){
+    m.warned = true;
+    pushLog(m.needOk ? '这 Boss 有点硬，还得再练练' : '打得吃力：' + m.need + '，回头攒一套对应抗性的装备', 'log-bad');
+  }
+  if (m === G.boss && m.t > 150){
+    G.boss = null;
+    document.getElementById('bossBar').classList.remove('on');
+    G.bossFail = (G.bossFail || 0) + 1;
+    if (G.bossFail >= 2){
+      pushLog('两次都过不去。绕过去了——它的宝箱没拿到，但路还在。', 'log-bad');
+      S.region++; G.dist = 0; G.nextLeader = 300; G.bossFail = 0;
+      pushLog('—— 进入第 ' + S.region + ' 区（绕行）', 'log-hi');
+    } else {
+      G.dist = P.regionLen * 0.55;
+      G.nextLeader = G.dist + 300;
+      pushLog('打不动，先退回来。回程路上继续积累，攒够了再来。', 'log-bad');
+    }
+  }
+}
+
+function addFx(v, color){
+  G.fx.push({ x: 0, y: 0, v, color, life: 0.8, max: 0.8, r: rnd(-16,16), dy: rnd(0,22) });
+  if (G.fx.length > 24) G.fx.shift();
+}
+
+
+
+/* ================= 渲染：场景 ================= */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+
+function resizeCanvas(){
+  const box = document.getElementById('stage').getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = Math.max(240, Math.round(box.width));
+  H = Math.max(200, Math.round(box.height));
+  cv.width = Math.round(W * DPR);
+  cv.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+
+function groundY(){ return H * 0.80; }
+
+function drawSky(){
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0a1226');
+  g.addColorStop(0.45, '#16233f');
+  g.addColorStop(0.72, '#3b3550');
+  g.addColorStop(1, '#5a4a55');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  // 星
+  for (let i=0;i<26;i++){
+    const x = (i*97.3) % W, y = (i*53.7) % (H*0.5);
+    ctx.globalAlpha = 0.25 + 0.35*Math.abs(Math.sin(i + G.scroll*0.0006));
+    ctx.fillStyle = '#dbe7ff';
+    ctx.fillRect(x, y, 1.6, 1.6);
+  }
+  ctx.globalAlpha = 1;
+  // 月
+  const mx = W*0.78, my = H*0.20;
+  const mg = ctx.createRadialGradient(mx,my,2,mx,my,46);
+  mg.addColorStop(0,'rgba(255,240,210,.9)');
+  mg.addColorStop(0.35,'rgba(255,235,190,.22)');
+  mg.addColorStop(1,'rgba(255,235,190,0)');
+  ctx.fillStyle = mg;
+  ctx.beginPath(); ctx.arc(mx,my,46,0,7); ctx.fill();
+  ctx.fillStyle = '#fdf3d8';
+  ctx.beginPath(); ctx.arc(mx,my,15,0,7); ctx.fill();
+}
+
+function drawSkyline(){
+  // 远景楼群
+  const base = groundY();
+  const off1 = (G.scroll * 0.12) % 140;
+  ctx.fillStyle = '#0f1a30';
+  for (let i=-1;i<Math.ceil(W/70)+2;i++){
+    const x = i*70 - off1;
+    const h = 60 + 70*Math.abs(Math.sin(i*1.7));
+    ctx.fillRect(x, base - h, 56, h);
+    // 窗户
+    ctx.fillStyle = 'rgba(255,220,150,.10)';
+    for (let wy = base - h + 12; wy < base - 8; wy += 16){
+      for (let wx = x + 8; wx < x + 50; wx += 14){
+        if (((wx*7 + wy*3) | 0) % 5 === 0) ctx.fillRect(wx, wy, 5, 7);
+      }
+    }
+    ctx.fillStyle = '#0f1a30';
+  }
+  // 中景树/灯
+  const off2 = (G.scroll * 0.4) % 220;
+  for (let i=-1;i<Math.ceil(W/220)+2;i++){
+    const x = i*220 - off2 + 40;
+    // 路灯
+    ctx.strokeStyle = '#1a2740'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x, base); ctx.lineTo(x, base-96); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, base-96); ctx.lineTo(x+22, base-96); ctx.stroke();
+    const lg = ctx.createRadialGradient(x+24, base-94, 1, x+24, base-94, 44);
+    lg.addColorStop(0,'rgba(255,214,140,.55)');
+    lg.addColorStop(1,'rgba(255,214,140,0)');
+    ctx.fillStyle = lg;
+    ctx.beginPath(); ctx.arc(x+24, base-94, 44, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffe0a0';
+    ctx.beginPath(); ctx.arc(x+24, base-94, 4, 0, 7); ctx.fill();
+    // 树
+    ctx.fillStyle = '#122238';
+    ctx.beginPath(); ctx.arc(x+150, base-34, 26, 0, 7); ctx.fill();
+    ctx.fillRect(x+146, base-30, 8, 30);
+  }
+}
+
+function drawGround(){
+  const base = groundY();
+  ctx.fillStyle = '#0b1220';
+  ctx.fillRect(0, base, W, H-base);
+  ctx.strokeStyle = '#1c2c44'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, base); ctx.lineTo(W, base); ctx.stroke();
+  // 车道线
+  const off = (G.scroll * 0.9) % 90;
+  ctx.strokeStyle = 'rgba(180,200,230,.16)'; ctx.lineWidth = 2;
+  for (let i=-1;i<W/90+2;i++){
+    const x = i*90 - off;
+    ctx.beginPath(); ctx.moveTo(x, base + 26); ctx.lineTo(x+34, base + 26); ctx.stroke();
+  }
+}
+
+function drawWalker(){
+  const base = groundY();
+  const cx = W * 0.30;
+  const scale = clamp(H / 360, 0.8, 1.5);
+  const swing = Math.sin(G.walk) * 0.5;
+  const bob = Math.abs(Math.cos(G.walk)) * 2.2 * scale;
+  ctx.save();
+  ctx.translate(cx, base - bob);
+  ctx.scale(scale, scale);
+  // 影子
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  ctx.beginPath(); ctx.ellipse(0, 2, 20, 5, 0, 0, 7); ctx.fill();
+  // 腿
+  ctx.strokeStyle = '#c9b28a'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-2, -34); ctx.lineTo(-2 + swing*13, -2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(2, -34); ctx.lineTo(2 - swing*13, -2); ctx.stroke();
+  // 身体
+  ctx.fillStyle = '#3f5b7d';
+  ctx.beginPath(); ctx.roundRect(-11, -66, 22, 34, 6); ctx.fill();
+  // 手臂
+  ctx.strokeStyle = '#c9b28a'; ctx.lineWidth = 4.5;
+  ctx.beginPath(); ctx.moveTo(-9, -58); ctx.lineTo(-14 - swing*8, -40); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(9, -58); ctx.lineTo(14 + swing*8, -40); ctx.stroke();
+  // 头
+  ctx.fillStyle = '#d8c49a';
+  ctx.beginPath(); ctx.arc(0, -76, 10, 0, 7); ctx.fill();
+  // 头发
+  ctx.fillStyle = '#2b2a30';
+  ctx.beginPath(); ctx.arc(0, -79, 10, Math.PI, 0); ctx.fill();
+  // 手里的剑
+  ctx.strokeStyle = '#a9c7e8'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(16, -46); ctx.lineTo(30, -70); ctx.stroke();
+  ctx.restore();
+}
+
+function mobX(){ return W * 0.30 + Math.min(190, W*0.30); }
+
+function drawMob(m){
+  if (!m) return;
+  const base = groundY();
+  const x = mobX();
+  const boss = m.kind === 'boss';
+  const scale = (boss ? 1.75 : m.kind === 'leader' ? 1.25 : 1) * clamp(H/360, 0.8, 1.4);
+  const col = m.elem === '混沌' ? '#c07cf0' : ELEM_COLOR[m.elem] || '#bbb';
+  const flash = G.hitT > 0.06;
+  ctx.save();
+  ctx.translate(x, base);
+  ctx.scale(scale, scale);
+  // 影子
+  ctx.fillStyle = 'rgba(0,0,0,.32)';
+  ctx.beginPath(); ctx.ellipse(0, 2, 22, 5, 0, 0, 7); ctx.fill();
+  // 身体
+  ctx.fillStyle = flash ? '#ffffff' : col;
+  ctx.globalAlpha = 0.92;
+  ctx.beginPath(); ctx.ellipse(0, -34, 20, 26, 0, 0, 7); ctx.fill();
+  // 头
+  ctx.beginPath(); ctx.arc(0, -66, 14, 0, 7); ctx.fill();
+  ctx.globalAlpha = 1;
+  // 眼
+  ctx.fillStyle = flash ? '#333' : '#0c1220';
+  ctx.beginPath(); ctx.arc(-6, -68, 2.6, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(6, -68, 2.6, 0, 7); ctx.fill();
+  // 脚
+  ctx.strokeStyle = col; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(-8, -10); ctx.lineTo(-9, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(8, -10); ctx.lineTo(9, 0); ctx.stroke();
+  // 血条
+  const bw = boss ? 150 : 74, bh = boss ? 7 : 5;
+  const hpR = clamp(m.hp / m.maxHp, 0, 1);
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillRect(-bw/2, -100, bw, bh);
+  ctx.fillStyle = boss ? '#ff9a5a' : (m.elem === '混沌' ? '#c07cf0' : '#6fd08a');
+  ctx.fillRect(-bw/2, -100, bw*hpR, bh);
+  ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1;
+  ctx.strokeRect(-bw/2, -100, bw, bh);
+  ctx.restore();
+  // 名字
+  ctx.font = '13px system-ui,-apple-system,"PingFang SC",sans-serif';
+  ctx.fillStyle = 'rgba(233,242,255,.85)';
+  ctx.textAlign = 'center';
+  ctx.fillText(m.name, x, base - (boss ? 122 : 116)*scale);
+}
+
+function drawFx(){
+  const x = mobX();
+  for (const f of G.fx){
+    const t = f.life / f.max;
+    ctx.globalAlpha = Math.min(1, t*1.6);
+    ctx.fillStyle = f.color;
+    ctx.font = 'bold ' + (f.v > 100000 ? 20 : 17) + 'px system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(fmt(f.v * (0.9 + 0.2*t)), x + 40 + f.r, groundY() - 46 - (f.dy||0) - (1-t)*44);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function draw(ts){
+  ctx.clearRect(0, 0, W, H);
+  drawSky();
+  drawSkyline();
+  drawGround();
+  const m = G.boss || G.mob;
+  drawWalker();
+  drawMob(m);
+  drawFx();
+  // 托管遮罩
+  if (S && S.auto){
+    ctx.fillStyle = 'rgba(6,10,20,.72)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#cfe0f6';
+    ctx.font = '16px system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('托管中 · 正在前往第 ' + S.region + ' 区', W/2, H/2 - 10);
+    ctx.fillStyle = 'rgba(90,169,240,.9)';
+    ctx.fillRect(W*0.2, H/2 + 14, W*0.6, 6);
+    ctx.fillStyle = '#7fd0ff';
+    ctx.fillRect(W*0.2, H/2 + 14, W*0.6 * (G.dist/P.regionLen), 6);
+    ctx.fillStyle = 'rgba(190,210,235,.7)';
+    ctx.font = '13px system-ui,sans-serif';
+    ctx.fillText(Math.round(G.dist) + ' / ' + P.regionLen + ' 米', W/2, H/2 + 42);
+  }
+}
+
+
+
+/* ================= UI 渲染 ================= */
+const RANKS = ['一阶 · 初入','二阶 · 小成','三阶 · 名动','四阶 · 一方','五阶 · 宗师','六阶 · 通玄','七阶 · 化境'];
+function rankOf(r){ return RANKS[r] || ('第' + cn(r+1) + '阶'); }
+let uiAcc = 0, lastPower = 0;
+
+function rankName(){ return rankOf(S.realm); }
+
+function render(){
+  if (!S) return;
+  const pw = currentPower();
+  document.getElementById('powerVal').textContent = fmt(pw);
+  document.getElementById('rankName').textContent = rankName();
+  if (lastPower && pw !== lastPower){
+    const d = pw - lastPower;
+    const el = document.getElementById('powerDelta');
+    el.textContent = (d > 0 ? '+' : '') + fmt(d);
+    el.style.color = d > 0 ? 'var(--green)' : 'var(--red)';
+    clearTimeout(el._t);
+    el._t = setTimeout(()=>{ el.textContent = ''; }, 1600);
+  }
+  lastPower = pw;
+
+  document.getElementById('lvVal').textContent = S.lv;
+  document.getElementById('realmInfo').textContent = '境界 ' + S.realm + ' · 上限 ' + realmCap();
+  const need = expNeed(S.lv);
+  document.getElementById('expFill').style.width = clamp(S.exp/need*100, 0, 100) + '%';
+  document.getElementById('expTxt').textContent = fmt(S.exp) + ' / ' + fmt(need);
+
+  document.getElementById('regionName').textContent = '第 ' + S.region + ' 区';
+  document.getElementById('distInfo').textContent = Math.round(G.dist) + ' / ' + P.regionLen + ' 米';
+  document.getElementById('distFill').style.width = clamp(G.dist/P.regionLen*100, 0, 100) + '%';
+  document.getElementById('regionNeed').textContent = '本区门槛 ' + fmt(regionNeed(S.region));
+  document.getElementById('nextBoss').textContent = 'Boss 还有 ' + Math.max(0, Math.round(P.regionLen - G.dist)) + ' 米';
+
+  document.getElementById('matsVal').textContent = fmt(S.mats);
+  document.getElementById('killsVal').textContent = fmt(S.kills);
+  document.getElementById('bagCount').textContent = S.bag.length ? '(' + S.bag.length + ')' : '';
+
+  // 装备
+  const grid = document.getElementById('eqGrid');
+  grid.innerHTML = '';
+  for (let i=0;i<9;i++){
+    const eq = S.equip[i];
+    const d = document.createElement('div');
+    d.className = 'eqbox' + (eq ? '' : ' empty');
+    const q = eq ? QMAP[eq.q.k] : null;
+    d.innerHTML = '<div class="sl">' + SLOTS[i] + '</div>'
+      + '<div class="nm" style="color:' + (q ? q.color : '') + '">' + (eq ? eq.name : '空') + '</div>'
+      + '<div class="en">' + (eq && eq.enh ? '+' + eq.enh : '') + '</div>';
+    d.onclick = () => showEquipDetail(i);
+    grid.appendChild(d);
+  }
+
+  // 宝箱
+  const cr = document.getElementById('chestRow');
+  const kinds = [['wood','木','#8a6a45'],['silver','银','#9fb3c8'],['gold','金','#e0b45c'],['elem','元素','#7fc0f0']];
+  cr.innerHTML = '';
+  for (const [k, label, color] of kinds){
+    const n = S.chests[k] || 0;
+    const d = document.createElement('div');
+    d.className = 'c' + (n ? '' : ' zero');
+    d.innerHTML = '<div class="ic" style="color:' + color + '">▣</div><div class="n">' + label + '箱 ' + n + '</div>';
+    d.onclick = () => { if (n) openChest(k); };
+    cr.appendChild(d);
+  }
+  document.getElementById('bossBar').classList.toggle('on', !!G.boss);
+  if (G.boss) document.getElementById('bossFill').style.width = clamp(G.boss.hp/G.boss.maxHp*100,0,100) + '%';
+}
+
+/* ================= 弹窗 ================= */
+function openPop(html, onOpen){
+  const pop = document.getElementById('pop');
+  document.getElementById('popIn').innerHTML = html;
+  pop.classList.add('on');
+  if (onOpen) onOpen();
+}
+function closePop(){ document.getElementById('pop').classList.remove('on'); }
+
+function showEquipDetail(i){
+  const eq = S.equip[i];
+  if (!eq) { pushLog('这个部位还空着', ''); return; }
+  const q = QMAP[eq.q.k];
+  openPop('<h2 style="color:' + q.color + '">' + eq.name + '</h2>'
+    + '<div class="sub">' + SLOTS[i] + ' · ' + q.name + (eq.enh ? ' · 强化 +' + eq.enh : '') + '</div>'
+    + '<div class="list">' + eq.affixes.map(a => '<div class="it"><span>' + a.name + '</span><b style="color:#9fe0a0">+' + a.v + '%</b></div>').join('') + '</div>'
+    + '<div class="btns"><button class="btn" id="edClose">关闭</button></div>',
+    () => { document.getElementById('edClose').onclick = closePop; });
+}
+
+function showBag(){
+  const list = S.bag.slice().sort((a,b)=> b.q.w - a.q.w);
+  const html = '<h2>背包</h2><div class="sub">' + list.length + ' 件。点一件就能换上去。</div>'
+    + '<div class="list">' + (list.length ? list.map((eq, idx) => {
+        const q = QMAP[eq.q.k];
+        return '<div class="it" data-i="' + idx + '" style="cursor:pointer">'
+          + '<span style="color:' + q.color + '">' + eq.name + '</span>'
+          + '<b style="color:#93a7c4;font-size:12px">' + eq.slot + '</b></div>';
+      }).join('') : '<div style="color:#6b7f9c;padding:10px 0">背包是空的</div>') + '</div>'
+    + '<div class="btns"><button class="btn gold" id="bagOpt">一键最优</button><button class="btn" id="bagClose">关闭</button></div>';
+  openPop(html, () => {
+    document.getElementById('bagClose').onclick = closePop;
+    document.getElementById('bagOpt').onclick = () => { optimizeAll(); closePop(); };
+    document.querySelectorAll('#popIn .it[data-i]').forEach(el => {
+      el.onclick = () => {
+        const eq = list[+el.dataset.i];
+        if (!eq) return;
+        const i = SLOTS.indexOf(eq.slot);
+        const arr = S.equip.slice(); arr[i] = eq;
+        const p = playerPower(S.lv, S.realm, arr).total;
+        const cur = currentPower();
+        const idx = S.bag.indexOf(eq);
+        if (idx >= 0) S.bag.splice(idx, 1);
+        if (p > cur * 0.995){
+          tryEquip(eq);
+        } else {
+          S.mats += 12;
+          pushLog('「' + eq.name + '」不如身上的，分解 +12 材料', '');
+        }
+        closePop(); render();
+      };
+    });
+  });
+}
+
+function showSettings(){
+  openPop('<h2>设置</h2><div class="sub">这个游戏不弹窗、不催你、不限时。想调什么自己调。</div>'
+    + '<div class="btns"><button class="btn" id="setHelp">怎么玩</button></div>'
+    + '<div class="btns"><button class="btn" id="setFont">字号：大</button><button class="btn" id="setFont2">字号：更大</button></div>'
+    + '<div class="btns"><button class="btn" id="setWipe" style="color:#f08a7a">清除存档重来</button></div>'
+    + '<div class="btns"><button class="btn" id="setClose">关闭</button></div>',
+    () => {
+      document.getElementById('setClose').onclick = closePop;
+      document.getElementById('setHelp').onclick = showHelp;
+      document.getElementById('setFont').onclick = () => { document.body.style.fontSize = '16px'; };
+      document.getElementById('setFont2').onclick = () => { document.body.style.fontSize = '19px'; };
+      document.getElementById('setWipe').onclick = () => {
+        if (confirm('确定清除存档？')) { S = null; localStorage.removeItem(SAVE_KEY); location.reload(); }
+      };
+    });
+}
+function showHelp(){
+  openPop('<h2>怎么玩</h2>'
+    + '<div class="list">'
+    + '<div class="it"><span>你只管走</span><b>怪自己会打</b></div>'
+    + '<div class="it"><span>杀掉就掉</span><b>经验 · 材料 · 装备</b></div>'
+    + '<div class="it"><span>装备更强</span><b>自动换上</b></div>'
+    + '<div class="it"><span>每 60 级</span><b>突破境界，战力 ×1.25，等级不重置</b></div>'
+    + '<div class="it"><span>每 5000 米</span><b>一个 Boss，五种各卡一项属性</b></div>'
+    + '<div class="it"><span>关掉网页</span><b>他还在走，回来一次结算（封顶 12 小时）</b></div>'
+    + '</div>'
+    + '<div class="sub" style="margin-top:10px">真正的动作只有三件：看一眼战力、点一下开箱、换一件装备。</div>'
+    + '<div class="btns"><button class="btn" id="helpClose">明白了</button></div>',
+    () => { document.getElementById('helpClose').onclick = closePop; });
+}
+
+let cmpTimer = null;
+function showCompare(eq, gain){
+  const q = QMAP[eq.q.k];
+  const box = document.getElementById('compare');
+  document.getElementById('cmpName').innerHTML = '<span style="color:' + q.color + '">' + eq.name + '</span> <span style="font-size:11px;color:#93a7c4">' + q.name + '</span>';
+  document.getElementById('cmpAff').innerHTML = eq.affixes.map(a => a.name + ' +' + a.v + '%').join(' · ');
+  document.getElementById('cmpVal').textContent = '战力 +' + fmt(gain) + ' ↑　已换上';
+  box.classList.add('on');
+  document.getElementById('cmpWear').style.display = 'none';
+  document.getElementById('cmpDrop').textContent = '知道了';
+  document.getElementById('cmpDrop').onclick = () => box.classList.remove('on');
+  clearTimeout(cmpTimer);
+  cmpTimer = setTimeout(()=> box.classList.remove('on'), 5200);
+}
+
+/* ================= 开箱 ================= */
+function openChest(kind){
+  if ((S.chests[kind] || 0) <= 0) return;
+  S.chests[kind]--;
+  let q;
+  if (kind === 'wood')   q = pickQuality(1.55);
+  else if (kind === 'silver') q = pickQuality(0.72);
+  else if (kind === 'gold')   q = QMAP.orange;
+  else q = pickQuality(0.55);
+  const elem = kind === 'elem' ? pick(ELEMS) : null;
+  const eq = genEquip(S.lv, q, elem);
+  const before = currentPower();
+  autoEquipCandidate(eq);
+  const after = currentPower();
+  const label = { wood:'木箱', silver:'银箱', gold:'金箱', elem:'元素箱' }[kind];
+  const col = QMAP[eq.q.k].color;
+  if (after > before){
+    pushLog(label + '：<span style="color:' + col + '">' + eq.name + '</span>　战力 +' + fmt(after-before), 'log-good');
+  } else if (!openChest.silent){
+    G.chestJunk = (G.chestJunk || 0) + 1;
+  }
+  render();
+}
+function openAllChests(){
+  let n = 0;
+  for (const k of ['wood','silver','gold','elem']) n += S.chests[k] || 0;
+  if (!n) { pushLog('没有宝箱', ''); return; }
+  const p0 = currentPower();
+  openChest.silent = true;
+  while ((S.chests.wood||0) + (S.chests.silver||0) + (S.chests.gold||0) + (S.chests.elem||0) > 0){
+    for (const k of ['gold','elem','silver','wood']) if (S.chests[k] > 0) { openChest(k); break; }
+  }
+  openChest.silent = false;
+  pushLog('开完 ' + n + ' 个箱子：战力 ' + fmt(p0) + ' → <b style="color:#9fe0a0">' + fmt(currentPower()) + '</b>', 'log-hi');
+  render();
+}
+
+/* ================= 事件 ================= */
+function bind(){
+  document.getElementById('btnAuto').onclick = () => {
+    S.auto = !S.auto;
+    document.getElementById('btnAuto').classList.toggle('on', S.auto);
+    pushLog(S.auto ? '已托管：界面简化，照常打怪掉落' : '退出托管', '');
+  };
+  document.getElementById('btnSet').onclick = showSettings;
+  document.getElementById('btnBest').onclick = optimizeAll;
+  document.getElementById('btnBag').onclick = showBag;
+  document.getElementById('btnOpenAll').onclick = openAllChests;
+  document.getElementById('cmpWear').onclick = () => {
+    document.getElementById('compare').classList.remove('on');
+  };
+  document.getElementById('pop').onclick = e => { if (e.target.id === 'pop') closePop(); };
+  window.addEventListener('resize', resizeCanvas);
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden){ save(); hiddenAt = Date.now(); }
+    else if (hiddenAt){
+      const gap = (Date.now() - hiddenAt) / 1000;
+      hiddenAt = 0;
+      if (gap > 60 && S){ S.lastSeen = Date.now() - gap*1000; settleOffline(); render(); }
+    }
+  });
+  setInterval(save, 8000);
+  window.addEventListener('beforeunload', save);
+}
+
+/* ================= 主循环 ================= */
+function loop(ts){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.06, (ts - (lastTs || ts)) / 1000);
+  lastTs = ts;
+  if (!S) return;
+  step(dt);
+  for (let i=G.fx.length-1;i>=0;i--){ G.fx[i].life -= dt; if (G.fx[i].life <= 0) G.fx.splice(i,1); }
+  draw(ts);
+  uiAcc += dt;
+  if (uiAcc >= 0.18){ uiAcc = 0; render(); }
+}
+
+/* ================= 启动 ================= */
+function boot(){
+  try {
+    if (new URLSearchParams(location.search).get('fresh')) localStorage.removeItem(SAVE_KEY);
+  } catch(e){}
+  S = load() || freshState();
+  if (!S.equip.some(Boolean)){
+    // 开局给一把白武器，别让第一分钟太难
+    const w = genEquip(1, QMAP.blue);
+    w.slot = '武器';
+    w.name = '削尖的树枝';
+    S.equip[0] = w;
+    const off = genEquip(1, QMAP.white);
+    off.slot = '副手';
+    off.name = '旧保温杯';
+    S.equip[1] = off;
+  }
+  resizeCanvas();
+  bind();
+  const off = settleOffline();
+  if (!S.kills) pushLog('你下班了，不想回家。往前走吧，路上的东西自己会解决。', 'log-hi');
+  else if (off) pushLog('欢迎回来。你不在的时候，他也一直在走。', 'log-hi');
+  else pushLog('继续往前。第 ' + S.region + ' 区。', '');
+  G.dist = 0;
+  render();
+  requestAnimationFrame(loop);
+}
+boot();
+
+
+})();
+</script>
+</body>
+</html>
