@@ -3,1024 +3,665 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>布站记 · 县域气象观测网</title>
+<title>小气象员 · 接雨滴</title>
 <style>
   :root{
-    --bg:#08111c; --panel:#0e1b29; --panel2:#132436; --line:#20364c;
-    --ink:#e8f2fb; --dim:#8aa4bd; --accent:#3fb8e6; --gold:#f0c260;
-    --p1:#35d6f0; --p2:#f472b6;
+    --ink:#e8f2ff;
+    --dim:#8fb0d6;
+    --accent:#5ec8ff;
+    --warn:#ffd166;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  html,body{
+    margin:0;height:100%;overflow:hidden;
+    background:#060d1a;
     font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
-    user-select:none;overflow-x:hidden}
-  body{background:radial-gradient(1200px 700px at 50% -20%,#123049 0%,#08111c 60%) fixed}
-  #app{max-width:1080px;margin:0 auto;padding:6px 12px 8px;display:flex;flex-direction:column;gap:6px;height:100vh}
-
-  /* ---------- 顶栏 ---------- */
-  header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .brand{font-size:20px;font-weight:800;letter-spacing:2px;
-    background:linear-gradient(180deg,#eaf7ff,#3fb8e6);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .brand small{font-size:10px;letter-spacing:1px;color:var(--dim);-webkit-text-fill-color:var(--dim);margin-left:6px;font-weight:600}
-  .meta{font-size:12px;color:var(--dim);letter-spacing:1px;margin-left:auto}
-  .meta b{color:var(--ink);font-weight:700}
-  .scores{display:flex;gap:8px;width:100%}
-  .pl{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 12px;
-    display:flex;align-items:center;gap:10px;transition:.2s;position:relative;overflow:hidden}
-  .pl.on{border-color:currentColor;box-shadow:0 0 0 1px currentColor,0 8px 24px -12px currentColor}
-  .pl .dot{width:9px;height:9px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor;flex:none}
-  .pl .nm{font-size:12px;letter-spacing:1px;opacity:.9}
-  .pl .sc{margin-left:auto;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
-  .pl .mini{font-size:10px;color:var(--dim);letter-spacing:.5px}
-
-  /* ---------- 主区 ---------- */
-  main{display:grid;grid-template-columns:1fr 320px;gap:10px;align-items:stretch;flex:1 1 auto;min-height:0}
-  #boardCard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:8px 8px 2px;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:0}
-  #boardCard:before{content:"";position:absolute;inset:0;pointer-events:none;
-    background:radial-gradient(60% 50% at 50% 0%,rgba(63,184,230,.10),transparent 70%)}
-  .turnBar{display:flex;align-items:center;gap:8px;padding:2px 6px 8px;font-size:12px;color:var(--dim);letter-spacing:.5px}
-  .turnBar b{color:var(--ink)}
-  .hint{margin-left:auto;font-size:11px;color:var(--accent);letter-spacing:.5px;min-height:14px}
-  .boardWrap{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;width:100%}
-  #board{width:100%;height:100%;display:block;touch-action:manipulation}
-
-  /* 六角格 */
-  .cell polygon{transition:opacity .18s,stroke .18s}
-  .cell{cursor:default}
-  .cell.can{cursor:pointer}
-  .cell.can polygon{stroke:#fff;stroke-width:1.6}
-  .cell.hl polygon{animation:pulse 1.1s infinite}
-  @keyframes pulse{0%,100%{opacity:.42}50%{opacity:.85}}
-  .cell.pip text{font-size:11px;font-weight:700;fill:#cfe4f6;opacity:.9;text-anchor:middle;dominant-baseline:central}
-  .ic{display:block;margin:0 auto}
-  .cell .own{font-size:7px;font-weight:800;text-anchor:middle;dominant-baseline:central}
-  .cell.dim{opacity:.55}
-
-  /* ---------- 侧栏 ---------- */
-  aside{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 10px}
-  .card h3{margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:none}
-  .diceRow{display:flex;gap:8px;align-items:center}
-  .die{width:48px;height:48px;border-radius:11px;border:1px solid var(--line);
-    display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800;cursor:pointer;
-    background:linear-gradient(180deg,#1a2f45,#132436);transition:.15s;position:relative}
-  .die:hover{border-color:var(--accent)}
-  .die.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(63,184,230,.35),0 0 22px rgba(63,184,230,.35);transform:translateY(-2px)}
-  .die.used{opacity:.32;cursor:default;filter:grayscale(1)}
-  .die .adj{position:absolute;bottom:-9px;display:flex;gap:3px}
-  .die .adj button{width:20px;height:16px;border-radius:5px;border:1px solid var(--line);background:#16283a;
-    color:var(--dim);font-size:11px;line-height:1;padding:0;cursor:pointer}
-  .die .adj button:active{background:#1d3348}
-  .store{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
-  .slot{height:46px;border-radius:10px;border:1px dashed #26405a;display:flex;align-items:center;justify-content:center;
-    font-size:10px;color:#4f6b85;cursor:default;text-align:center;line-height:1.3;position:relative;overflow:hidden}
-  .slot.f{border-style:solid;border-color:#2c4a67;background:#132436;cursor:pointer;color:var(--ink)}
-  .slot.f.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(63,184,230,.3)}
-  .slot .t{font-size:20px;line-height:1}
-  .slot .n{font-size:9px;color:var(--dim)}
-  .slot .fx{font-size:8px;color:#7fd1f0;margin-top:1px}
-  .res{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
-  .res div{background:#132436;border-radius:10px;padding:6px 4px}
-  .res .v{font-size:17px;font-weight:800}
-  .res .k{font-size:9px;color:var(--dim);letter-spacing:1px}
-  .goods{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-  .gd{flex:1;min-width:44px;border-radius:8px;padding:3px 2px;text-align:center;font-size:10px;line-height:1.35;
-    background:#132436;border:1px solid #20364c;color:var(--dim);cursor:default}
-  .gd.has{color:var(--ink);cursor:pointer;border-color:#3d6a8f;background:#173049}
-  .gd.can{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-  .gd b{display:block;font-size:11px;font-weight:700}
-
-  /* ---------- 底栏 ---------- */
-  #dock{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:5px 10px 6px;display:flex;flex-direction:column;gap:3px;flex:none}
-  .dlabel{font-size:9px;letter-spacing:1.2px;color:#5f7d99;margin-top:1px}
-  .whRow,.portRow{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
-  .wh{border:1px solid #20364c;border-radius:9px;background:#101f2e;padding:3px 4px;text-align:left;min-height:44px;
-    display:flex;flex-direction:column;gap:2px;justify-content:flex-start;transition:.15s}
-  .wh.can{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 18px -6px var(--accent);cursor:pointer}
-  .wh .h{font-size:9px;color:#5f7d99;letter-spacing:1px;margin-bottom:1px}
-  .wh .it{display:flex;align-items:center;gap:3px;font-size:9px;line-height:13px;white-space:nowrap;overflow:hidden}
-  .wh .it span{color:#9dbcda;overflow:hidden;text-overflow:ellipsis}
-  .wh .nm{display:none}
-  .wh.empty{opacity:.35}
-  .actRow{display:flex;gap:6px;flex-wrap:wrap}
-  .btn{appearance:none;border:1px solid var(--line);background:#15293c;color:var(--ink);border-radius:9px;
-    padding:6px 12px;font-size:12px;letter-spacing:1px;cursor:pointer;transition:.15s}
-  .btn:hover{border-color:var(--accent);color:#bfe9fb}
-  .btn.on{background:#1c3d57;border-color:var(--accent);color:#d9f4ff}
-  .btn:disabled{opacity:.35;cursor:default}
-  .btn.gold{border-color:#6b5327;background:#2a2213;color:var(--gold)}
-  .port{padding:3px 2px;text-align:center;border-radius:7px;background:#101f2e;border:1px solid #1b2f43;transition:.15s}
-  .port .h{font-size:9px;color:#5f7d99}
-  .port .g{font-size:10px;color:#6f8ba6;line-height:1.35}
-  .port .g b{color:#cfe6f8}
-  .port.has{border-color:#2f5675}
-  .port.has .g b{color:#9fe0ff}
-  .port.can{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 16px -6px var(--accent);cursor:pointer}
-
-  /* ---------- 日志 ---------- */
-  #log{flex:none;max-height:38px;overflow:auto;font-size:11px;line-height:1.5;color:#8fa9c1;padding:4px 6px;border-top:1px solid #17293b;background:#0c1826;border-radius:0 0 12px 12px}
-  #log div{opacity:.85}
-  #log div:first-child{color:#cfe8f8}
-
-  /* ---------- 弹层 ---------- */
-  #modal{position:fixed;inset:0;background:rgba(4,10,17,.78);display:flex;align-items:center;justify-content:center;
-    padding:20px;z-index:50;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-  #modal.hide{display:none}
-  .modalInner{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;max-width:460px;width:100%;
-    max-height:86vh;overflow:auto;text-align:center;box-shadow:0 30px 80px -20px #000}
-  .rules{text-align:left;font-size:12.5px;line-height:1.95;color:#b9d2e6;margin:10px 0}
-  .rules b{color:#eaf6ff}
-  .rules .k{color:var(--accent);font-weight:700}
-  .rules ul{margin:6px 0 10px;padding-left:18px}
-  .rules li{margin:4px 0}
-  .modalInner h2{margin:0 0 6px;font-size:22px;letter-spacing:1px}
-  .modalInner p{font-size:12px;color:var(--dim);line-height:1.9;margin:0 0 14px}
-  .modalInner .big{font-size:40px;font-weight:800;color:#fff;line-height:1.1;font-variant-numeric:tabular-nums}
-  .modalInner table{width:100%;font-size:11px;color:var(--dim);border-collapse:collapse;margin:10px 0}
-  .modalInner td{padding:3px 0;text-align:left}
-  .modalInner td:last-child{text-align:right;color:var(--ink)}
-  .modalInner .btn{margin-top:6px;width:100%;padding:12px}
-
-  #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,10px);background:#16354d;border:1px solid #2f6187;
-    color:#d7eefc;padding:9px 16px;border-radius:999px;font-size:12px;opacity:0;pointer-events:none;transition:.22s;z-index:60}
-  #toast.on{opacity:1;transform:translate(-50%,0)}
-
-  @media (max-width:900px){
-    #app{height:auto;min-height:100%}
-    main{grid-template-columns:1fr;display:flex;flex-direction:column}
-    #board{max-height:58vh}
-    aside{flex-direction:row;flex-wrap:wrap}
-    aside .card{flex:1 1 46%}
-    .whRow,.portRow{grid-template-columns:repeat(6,1fr);gap:4px}
-    .wh .nm{display:none}
-    .die{width:46px;height:46px;font-size:20px}
+    color:var(--ink);
+    user-select:none;
   }
+  #stage{
+    position:relative;
+    width:100%;max-width:520px;height:100%;
+    margin:0 auto;
+    touch-action:none;
+    overflow:hidden;
+    box-shadow:0 0 80px rgba(20,60,120,.35);
+  }
+  canvas{display:block;width:100%;height:100%}
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:absolute;inset:0;pointer-events:none;
+    padding:14px 16px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  #score{
+    font-size:34px;font-weight:800;letter-spacing:.5px;
+    line-height:1;text-shadow:0 2px 18px rgba(94,200,255,.55);
+    font-variant-numeric:tabular-nums;
+  }
+  #score small{font-size:12px;font-weight:600;color:var(--dim);letter-spacing:2px;margin-left:6px}
+  #lives{display:flex;gap:6px}
+  .life{
+    width:12px;height:12px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#9fe1ff,#3aa4e8 60%,#1b5f9e);
+    box-shadow:0 0 10px rgba(94,200,255,.7);
+    transition:.25s;
+  }
+  .life.off{background:#1d2f47;box-shadow:none;opacity:.55}
+  #combo{
+    position:absolute;left:50%;top:76px;transform:translateX(-50%);
+    font-size:15px;font-weight:800;color:var(--warn);
+    letter-spacing:1px;opacity:0;transition:opacity .18s;
+    text-shadow:0 2px 12px rgba(255,209,102,.5);
+  }
+  #combo.on{opacity:1}
+  #best{font-size:12px;color:var(--dim);letter-spacing:1px}
+
+  /* ---------- 面板 ---------- */
+  #panel{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;
+    padding:28px;text-align:center;
+    background:rgba(6,13,26,.62);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    transition:opacity .3s;
+  }
+  #panel.hide{opacity:0;pointer-events:none}
+  #panel h1{
+    margin:0;font-size:30px;font-weight:800;letter-spacing:1px;
+    background:linear-gradient(180deg,#eaf6ff,#5ec8ff);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  #panel .sub{font-size:13px;color:var(--dim);line-height:1.9;max-width:300px}
+  #panel .sub b{color:#bcdcf7;font-weight:600}
+  .btn{
+    appearance:none;border:0;cursor:pointer;
+    padding:14px 40px;border-radius:999px;
+    font-size:17px;font-weight:800;letter-spacing:2px;
+    color:#04101f;
+    background:linear-gradient(180deg,#8fe0ff,#3aa4e8);
+    box-shadow:0 10px 30px rgba(58,164,232,.45),inset 0 1px 0 rgba(255,255,255,.6);
+    transition:transform .12s,box-shadow .12s;
+  }
+  .btn:active{transform:translateY(2px) scale(.98);box-shadow:0 6px 18px rgba(58,164,232,.4)}
+  .final{font-size:44px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums}
+  .finalLabel{font-size:12px;letter-spacing:3px;color:var(--dim)}
+  .badge{font-size:13px;color:var(--warn);letter-spacing:1px;min-height:20px}
+  .keys{font-size:11px;color:#5f7fa5;letter-spacing:.5px;margin-top:4px}
 </style>
 </head>
 <body>
-<div id="app">
-  <header>
-    <div class="brand">布站记<small>县域气象观测网</small></div>
-    <div class="meta"><b id="phaseLabel">A</b> 阶段 · 第 <b id="roundLabel">1</b>/5 轮</div>
-    <button class="btn" id="btnHelp" style="padding:5px 12px;font-size:11px">规则</button>
-    <div class="scores" id="scores"></div>
-  </header>
+<div id="stage">
+  <canvas id="cv"></canvas>
 
-  <main>
-    <section id="boardCard">
-      <div class="turnBar">
-        <span id="turnName">—</span>
-        <span class="hint" id="hint"></span>
-      </div>
-      <div class="boardWrap"><svg id="board" viewBox="-200 -178 400 356"></svg></div>
-      <div id="log"></div>
-    </section>
+  <div id="hud">
+    <div class="row">
+      <div id="score">0<small>分</small></div>
+      <div id="lives"></div>
+    </div>
+    <div class="row">
+      <div id="best">最高 0</div>
+    </div>
+    <div id="combo"></div>
+  </div>
 
-    <aside>
-      <div class="card">
-        <h3>骰子</h3>
-        <div class="diceRow" id="diceRow"></div>
-      </div>
-      <div class="card">
-        <h3>暂存区（4 格）</h3>
-        <div class="store" id="storeRow"></div>
-      </div>
-    </aside>
-  </main>
-
-  <footer id="dock">
-    <div class="dlabel">物资仓（骰点决定能取几号仓）</div>
-    <div class="whRow" id="whRow"></div>
-    <div class="dlabel">港口 / 我的数据包（骰点对上才能上传，每件 2 分 + 1 经费）</div>
-    <div class="portRow" id="portRow"></div>
-    <div class="actRow" id="actRow"></div>
-  </footer>
+  <div id="panel">
+    <h1>小气象员 · 接雨滴</h1>
+    <div class="sub">
+      移动<b>水桶</b>接住<b>雨滴</b>得分，<br>
+      躲开<b style="color:#ffd166">冰雹</b>——砸中就掉命。<br>
+      一共 <b>3</b> 条命，看你能接多少。
+    </div>
+    <button class="btn" id="startBtn">开 始</button>
+    <div class="keys">鼠标 / 手指拖动 · 方向键 · 空格暂停</div>
+  </div>
 </div>
-
-<div id="toast"></div>
-<div id="modal" class="hide"><div class="modalInner" id="modalInner"></div></div>
 
 <script>
 (() => {
-'use strict';
+  'use strict';
 
-/* ==================================================================
-   常量
-   ================================================================== */
-const COLS = [
-  { k:'obs',   ch:'观', name:'地面观测', c:'#4fa3e3' },
-  { k:'up',    ch:'探', name:'高空探测', c:'#3fbfb0' },
-  { k:'radar', ch:'雷', name:'天气雷达', c:'#9a7bd6' },
-  { k:'sat',   ch:'卫', name:'卫星遥感', c:'#5b7fe0' },
-  { k:'warn',  ch:'警', name:'预警服务', c:'#e8843c' },
-  { k:'agri',  ch:'农', name:'生态农业', c:'#6db35c' },
-];
-const CKEY = {}; COLS.forEach((c,i)=> CKEY[c.k]=i);
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const stage = document.getElementById('stage');
+  const scoreEl = document.getElementById('score');
+  const livesEl = document.getElementById('lives');
+  const comboEl = document.getElementById('combo');
+  const bestEl = document.getElementById('best');
+  const panel = document.getElementById('panel');
+  const startBtn = document.getElementById('startBtn');
 
-const HEX_R = 30;
-const DIRS = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
-const ROWS = [
-  { r:-3, q0: 0, s:'CDCC' },
-  { r:-2, q0:-1, s:'CDAEC' },
-  { r:-1, q0:-2, s:'DDBAEE' },
-  { r: 0, q0:-3, s:'FFEBBAA' },
-  { r: 1, q0:-3, s:'FBEEAF' },
-  { r: 2, q0:-3, s:'FBDEF' },
-  { r: 3, q0:-3, s:'DDDF' },
-];
-const LETTERS = 'ABCDEF';
+  const BEST_KEY = 'rain_best_v1';
+  const MAX_LIVES = 3;
 
-const REGION_SCORE = [0,1,3,6,10,15,21,28,36];
-const PHASE_BONUS = [10,8,6,4,2];
-const PHASE_NAMES = ['A','B','C','D','E'];
+  let W = 0, H = 0;
 
-const BUILDS = [
-  { k:'fc',   name:'预报台',   desc:'立即再取 1 块' },
-  { k:'warn', name:'预警中心', desc:'立即 +4 分' },
-  { k:'sci',  name:'科普馆',   desc:'立即 +2 技术员' },
-  { k:'rain', name:'人影办',   desc:'立即 +3 经费' },
-  { k:'gear', name:'装备库',   desc:'立即追加 1 次行动' },
-  { k:'data', name:'数据中心', desc:'立即从港口取 1 件' },
-];
-const SCIS = [
-  { k:'s1', name:'数值预报试验', desc:'立即 +3 分' },
-  { k:'s2', name:'台站加密观测', desc:'立即 +2 经费' },
-  { k:'s3', name:'青年科技基金', desc:'立即 +2 技术员' },
-  { k:'s4', name:'长期定位观测', desc:'每阶段末 +1 经费' },
-  { k:'s5', name:'流域水文耦合', desc:'终局每完成区域 +2 分' },
-];
-
-const KIND = {
-  castle:    { name:'观测站',   icon:'obs',   ci:0, per:2 },
-  monastery: { name:'科研课题', icon:'sci',   ci:1, per:3 },
-  mine:      { name:'雷达站',   icon:'radar', ci:2, per:3 },
-  ship:      { name:'数据链',   icon:'sat',   ci:3, per:2 },
-  building:  { name:'业务楼',   icon:'build', ci:4, per:3 },
-  animal:    { name:'农业示范', icon:'agri',  ci:5, per:3 },
-};
-
-/* ==================================================================
-   工具
-   ================================================================== */
-const $ = s => document.querySelector(s);
-const clamp = (v,a,b) => v<a?a:v>b?b:v;
-const ri = (a,b) => a + Math.floor(Math.random()*(b-a+1));
-function seededShuffle(arr, seed){
-  let a = seed >>> 0;
-  const rnd = () => { a = (a*1664525 + 1013904223) >>> 0; return a/4294967296; };
-  for (let i=arr.length-1;i>0;i--){ const j = Math.floor(rnd()*(i+1)); const t=arr[i]; arr[i]=arr[j]; arr[j]=t; }
-  return arr;
-}
-function hexPts(cx,cy,r){
-  const p = [];
-  for (let i=0;i<6;i++){
-    const a = Math.PI/180*(60*i - 30);
-    p.push((cx + r*Math.cos(a)).toFixed(1) + ',' + (cy + r*Math.sin(a)).toFixed(1));
-  }
-  return p.join(' ');
-}
-const ICONS = {
-  obs:   '<path d="M12 3v9.4"/><circle cx="12" cy="17" r="3.4"/><path d="M9.4 8.4h5.2M9.4 11.4h5.2"/>',
-  radar: '<path d="M4 15a8.5 8.5 0 0 1 13.2-7.4"/><path d="M17 7.6l3.2-1.9"/><path d="M12 15.4V20"/><path d="M8.4 21h7.2"/>',
-  sat:   '<rect x="9" y="8" width="6" height="8" rx="1.2"/><path d="M9 12H5M19 12h-4"/><rect x="2" y="9.6" width="3.4" height="4.8" rx="1"/><rect x="18.6" y="9.6" width="3.4" height="4.8" rx="1"/>',
-  agri:  '<path d="M12 21.5V8"/><path d="M12 11.5c-3.3 0-4.3-2.3-4.3-4.3 3.3 0 4.3 2.3 4.3 4.3z"/><path d="M12 15.6c3.3 0 4.3-2.3 4.3-4.3-3.3 0-4.3 2.3-4.3 4.3z"/><path d="M8 21.5h8"/>',
-  build: '<path d="M5 21.5V8l7-4.6L19 8v13.5"/><path d="M9.4 21.5v-5.2h5.2v5.2"/><path d="M9 11h.01M15 11h.01"/>',
-  sci:   '<path d="M9.4 3h5.2"/><path d="M10.4 3v5.6L6 17.2a3 3 0 0 0 2.6 4.4h6.8A3 3 0 0 0 18 17.2l-4.4-8.6V3"/>',
-};
-function svgIcon(key, cx, cy, size, color, sw){
-  const s = size / 24, w = (sw || 2) / s;
-  return '<g transform="translate(' + (cx - 12*s).toFixed(2) + ',' + (cy - 12*s).toFixed(2) + ') scale(' + s.toFixed(3)
-    + ')" fill="none" stroke="' + color + '" stroke-width="' + w.toFixed(2)
-    + '" stroke-linecap="round" stroke-linejoin="round">' + (ICONS[key] || '') + '</g>';
-}
-function htmlIcon(key, size){
-  const s = size || 18;
-  return '<svg class="ic" viewBox="0 0 24 24" width="' + s + '" height="' + s + '" fill="none" stroke="currentColor"'
-    + ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (ICONS[key] || '') + '</svg>';
-}
-const PIP_POS = {
-  1:[[0,0]],
-  2:[[-1.1,-1.1],[1.1,1.1]],
-  3:[[-1.1,-1.1],[0,0],[1.1,1.1]],
-  4:[[-1.1,-1.1],[1.1,-1.1],[-1.1,1.1],[1.1,1.1]],
-  5:[[-1.1,-1.1],[1.1,-1.1],[0,0],[-1.1,1.1],[1.1,1.1]],
-  6:[[-1.1,-1.1],[1.1,-1.1],[-1.1,0],[1.1,0],[-1.1,1.1],[1.1,1.1]],
-};
-
-/* ==================================================================
-   图板
-   ================================================================== */
-function buildTemplate(){
-  const cells = [], byKey = new Map();
-  ROWS.forEach(row => {
-    for (let i=0;i<row.s.length;i++){
-      const q = row.q0 + i, r = row.r;
-      const c = {
-        i: cells.length, q, r,
-        cx: Math.sqrt(3)*HEX_R*(q + r/2),
-        cy: 1.5*HEX_R*r,
-        ci: LETTERS.indexOf(row.s[i]),
-        pip: ((cells.length) % 6) + 1,
-        built: null, region: -1, key: q+','+r
-      };
-      cells.push(c); byKey.set(c.key, c);
-    }
-  });
-  // 点数打乱，保证每个点数 6~7 格
-  const pips = cells.map(c => c.pip);
-  seededShuffle(pips, 20261125);
-  cells.forEach((c,i) => c.pip = pips[i]);
-
-  // 连通区域
-  const regions = [];
-  for (const c of cells){
-    if (c.region >= 0) continue;
-    const id = regions.length, group = [], stack = [c];
-    c.region = id;
-    while (stack.length){
-      const cur = stack.pop(); group.push(cur.i);
-      for (const [dq,dr] of DIRS){
-        const nb = byKey.get((cur.q+dq)+','+(cur.r+dr));
-        if (nb && nb.ci === c.ci && nb.region < 0){ nb.region = id; stack.push(nb); }
-      }
-    }
-    regions.push({ id, ci: c.ci, cells: group });
-  }
-  // 相邻表
-  const nb = cells.map(c => {
-    const out = [];
-    for (const [dq,dr] of DIRS){
-      const n = byKey.get((c.q+dq)+','+(c.r+dr));
-      if (n) out.push(n.i);
-    }
-    return out;
-  });
-  return { cells, regions, nb };
-}
-const TEMPLATE = buildTemplate();
-const STARTS = ['1,-2','3,0','1,1'];  // 观测色（A）格，作为起始候选
-
-/* ==================================================================
-   状态
-   ================================================================== */
-let G = null;
-
-function newGame(mode){
-  const n = mode === 'solo' ? 1 : 2;
-  G = {
-    mode,
-    phase: 0,
-    round: 1,
-    order: [],
-    turnIdx: 0,
-    players: [],
-    wh: {},          // 仓库 1-6
-    market: [],
-    ports: {},       // 港口 1-6
-    colorAward: {},  // ci -> [pidx...]
-    pick: { die: null, tile: null },
-    over: false,
-    log: [],
+  const S = {
+    state: 'ready',          // ready | play | pause | over
+    t: 0,                    // 本局时间
+    score: 0,
+    best: Number(localStorage.getItem(BEST_KEY) || 0),
+    lives: MAX_LIVES,
+    combo: 0,
+    items: [],
+    parts: [],
+    spawnTimer: 0.6,
+    shake: 0,
+    flash: 0,
+    water: 0,                // 底部水位（0-1），跟分数相关
+    bucket: { x: 0, w: 84, y: 0, target: null },
+    keys: { left: false, right: false },
+    rainLines: [],
+    clouds: [],
+    lastTs: 0
   };
-  for (let i=0;i<n;i++){
-    const cells = TEMPLATE.cells.map(c => ({ ...c, built: null }));
-    const p = {
-      idx: i,
-      name: i === 0 ? '青队' : '橙队',
-      color: i === 0 ? 'var(--p1)' : 'var(--p2)',
-      hex: i === 0 ? '#35d6f0' : '#f472b6',
-      board: cells,
-      regions: TEMPLATE.regions,
-      nb: TEMPLATE.nb,
-      score: 0,
-      coins: 1,
-      tech: 2,
-      store: [],
-      goods: {},        // num -> 件数
-      shipTrack: 0,
-      dice: [], used: [],
-      bought: false,
-    };
-    // 起始观测站
-    const sk = STARTS[ri(0, STARTS.length-1)];
-    const sc = cells.find(c => c.key === sk);
-    sc.built = { kind:'castle', pid:i, start:true, icon:'obs', name:'起始观测站' };
-    G.players.push(p);
+
+  /* ---------------- 尺寸 ---------------- */
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    W = Math.max(240, Math.round(r.width));
+    H = Math.max(320, Math.round(r.height));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    S.bucket.w = Math.min(96, Math.max(64, W * 0.18));
+    S.bucket.y = H - Math.max(96, H * 0.14);
+    if (!S.bucket.x) S.bucket.x = W / 2;
+    S.bucket.x = clamp(S.bucket.x, S.bucket.w / 2, W - S.bucket.w / 2);
+
+    buildBackdrop();
   }
-  initPhase();
-  beginRound(true);
-}
 
-/* ==================================================================
-   板块与数据
-   ================================================================== */
-let TID = 1;
-function makeTile(kind){
-  const def = KIND[kind];
-  const t = { id: TID++, kind, icon: def.icon, ci: def.ci, name: def.name, desc:'' };
-  if (kind === 'building'){
-    const b = BUILDS[ri(0, BUILDS.length-1)];
-    t.name = b.name; t.desc = b.desc;
-  } else if (kind === 'monastery'){
-    const s = SCIS[ri(0, SCIS.length-1)];
-    t.name = s.name; t.desc = s.desc;
-  } else if (kind === 'animal'){
-    t.herd = ri(2,4);
-    t.desc = '作物 ×' + t.herd;
-  } else if (kind === 'ship'){
-    t.desc = '整港取货 + 传输 +1';
-  } else if (kind === 'castle'){
-    t.desc = '追加 1 颗奖励骰';
-  } else if (kind === 'mine'){
-    t.desc = '每阶段末 +1 经费';
-  }
-  return t;
-}
-
-function initPhase(){
-  G.wh = {1:[],2:[],3:[],4:[],5:[],6:[]};
-  const pool = [];
-  for (const k in KIND){
-    for (let i=0;i<KIND[k].per;i++) pool.push(makeTile(k));
-  }
-  // 每阶段 18 块：每仓 3 块 + 省局调拨 4 块
-  for (const k in KIND){ pool.push(makeTile(k)); }
-  // 洗牌后平分到 6 个仓库（每仓 2 块），4 块进省局调拨
-  seededShuffle(pool, Math.floor(Math.random()*1e9));
-  const boxes = {1:[],2:[],3:[],4:[],5:[],6:[]};
-  let bi = 1;
-  for (const t of pool.slice(0,18)){ boxes[bi].push(t); bi = bi%6 + 1; }
-  G.wh = boxes;
-  G.market = pool.slice(18,22);
-  G.ports = {1:[],2:[],3:[],4:[],5:[],6:[]};
-  G.portStock = 5;   // 本阶段还剩几件数据包没投
-}
-
-/* ==================================================================
-   回合流程
-   ================================================================== */
-function beginRound(first){
-  // 掷骰
-  for (const p of G.players){
-    p.dice = [ri(1,6), ri(1,6)];
-    p.used = [false,false];
-    p.bought = false;
-  }
-  // 先手顺序：传输轨降序，同轨则后手先
-  G.order = G.players.slice().sort((a,b)=> b.shipTrack - a.shipTrack || b.idx - a.idx).map(p=>p.idx);
-  G.turnIdx = 0;
-  // 白骰投数据包
-  if (G.portStock > 0){
-    const n = ri(1,6);
-    G.ports[n].push(n);
-    G.portStock--;
-    pushLog('白骰 ' + n + '：一件 ' + n + ' 号数据包投进 ' + n + ' 号港口');
-  }
-  if (first) pushLog('开局：每人起始观测站已就位');
-  startTurn();
-}
-
-function startTurn(){
-  G.pick = { die:null, tile:null };
-  const p = cur();
-  if (!p.dice.length || p.used.every(u=>u)) return endTurn();
-  render();
-}
-
-function cur(){ return G.players[G.order[G.turnIdx]]; }
-
-function endTurn(){
-  G.pick = { die:null, tile:null };
-  G.turnIdx++;
-  if (G.turnIdx >= G.order.length){ return endRound(); }
-  startTurn();
-}
-
-function endRound(){
-  // 每阶段 5 轮
-  if (G.round >= 5){ return endPhase(); }
-  G.round++;
-  beginRound(false);
-}
-
-function endPhase(){
-  // 雷达站收入
-  for (const p of G.players){
-    let n = 0;
-    for (const c of p.board) if (c.built && c.built.kind === 'mine') n++;
-    // 科研：长期定位观测
-    let extra = 0;
-    for (const c of p.board) if (c.built && c.built.kind === 'monastery' && c.built.sub === 's4') extra++;
-    if (n + extra > 0){
-      p.coins += n + extra;
-      pushLog(p.name + ' 阶段结算：雷达站/长期观测 +' + (n+extra) + ' 经费');
+  function buildBackdrop() {
+    S.rainLines = [];
+    const n = Math.round(W * H / 9000);
+    for (let i = 0; i < n; i++) {
+      S.rainLines.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        len: 8 + Math.random() * 22,
+        sp: 260 + Math.random() * 520,
+        a: 0.06 + Math.random() * 0.16,
+        w: Math.random() < 0.25 ? 1.4 : 0.9
+      });
+    }
+    S.clouds = [];
+    for (let i = 0; i < 4; i++) {
+      S.clouds.push({
+        x: W * (0.1 + Math.random() * 0.8),
+        y: H * (0.06 + Math.random() * 0.16),
+        r: 26 + Math.random() * 40,
+        a: 0.035 + Math.random() * 0.05,
+        sp: 6 + Math.random() * 10
+      });
     }
   }
-  G.phase++;
-  if (G.phase >= 5){ return endGame(); }
-  G.round = 1;
-  initPhase();
-  pushLog('—— 进入 ' + PHASE_NAMES[G.phase] + ' 阶段 ——');
-  beginRound(false);
-}
 
-/* ==================================================================
-   行动
-   ================================================================== */
-function useDie(p, idx){
-  p.used[idx] = true;
-  G.pick.die = null;
-  G.pick.tile = null;
-  if (p.used.every(u=>u)) setTimeout(()=>{ if (!G.over) endTurn(); }, 420);
-  else render();
-}
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+  const rand = (a, b) => a + Math.random() * (b - a);
 
-function actTake(p, dieIdx){
-  const v = p.dice[dieIdx];
-  const box = G.wh[v];
-  if (!box || !box.length){ toast(v + ' 号仓已经空了'); return; }
-  if (p.store.length >= 4){ toast('暂存区满了，先放一块再取'); return; }
-  const t = box.pop();
-  p.store.push(t);
-  pushLog(p.name + ' 从 ' + v + ' 号仓取了「' + t.name + '」');
-  useDie(p, dieIdx);
-  render();
-}
-
-function canPlaceAt(p, cell, tile, dieVal){
-  if (cell.built) return false;
-  if (cell.ci !== tile.ci) return false;
-  if (cell.pip !== dieVal) return false;
-  return p.nb[cell.i].some(i => p.board[i].built);
-}
-
-function placeTile(p, dieIdx, tileIdx, cellIdx){
-  const dieVal = p.dice[dieIdx];
-  const tile = p.store[tileIdx];
-  const cell = p.board[cellIdx];
-  if (!tile || !cell || !canPlaceAt(p, cell, tile, dieVal)) { toast('这个位置放不了'); return; }
-
-  p.store.splice(tileIdx, 1);
-  cell.built = { kind: tile.kind, pid: p.idx, name: tile.name, icon: tile.icon, sub: tile.sub, herd: tile.herd };
-  pushLog(p.name + ' 在「' + COLS[cell.ci].name + '·' + cell.pip + '」布下「' + tile.name + '」');
-
-  applyEffect(p, tile, cell);
-  checkRegion(p, cell, tile);
-  checkColorAward(p, cell.ci);
-
-  useDie(p, dieIdx);
-  render();
-}
-
-function applyEffect(p, tile, cell){
-  if (tile.kind === 'castle'){
-    const v = ri(1,6);
-    p.dice.push(v); p.used.push(false);
-    toast('观测站：奖励骰 ' + v);
-  } else if (tile.kind === 'building'){
-    const sub = findSub(BUILDS, tile.name);
-    tile.sub = sub ? sub.k : null;
-    if (sub){
-      if (sub.k === 'fc'){
-        // 立即从任意非空仓取一块
-        const avail = [1,2,3,4,5,6].filter(n => G.wh[n].length);
-        if (avail.length && p.store.length < 4){
-          const n = avail[ri(0, avail.length-1)];
-          const t = G.wh[n].pop(); p.store.push(t);
-          pushLog('　预报台：从 ' + n + ' 号仓调入「' + t.name + '」');
-        }
-      } else if (sub.k === 'warn'){ p.score += 4; pushLog('　预警中心：+4 分'); }
-      else if (sub.k === 'sci'){ p.tech += 2; pushLog('　科普馆：+2 技术员'); }
-      else if (sub.k === 'rain'){ p.coins += 3; pushLog('　人影办：+3 经费'); }
-      else if (sub.k === 'gear'){
-        const v = ri(1,6); p.dice.push(v); p.used.push(false);
-        pushLog('　装备库：追加行动骰 ' + v);
-      } else if (sub.k === 'data'){
-        const avail = [1,2,3,4,5,6].filter(n => G.ports[n].length);
-        if (avail.length){
-          const n = avail[ri(0, avail.length-1)];
-          const cnt = G.ports[n].length;
-          if (Object.keys(p.goods).length < 3 || p.goods[n]){
-            p.goods[n] = (p.goods[n]||0) + cnt; G.ports[n] = [];
-            pushLog('　数据中心：取走 ' + n + ' 号港口 ' + cnt + ' 件数据包');
-          }
-        }
-      }
-    }
-  } else if (tile.kind === 'monastery'){
-    const sub = findSub(SCIS, tile.name);
-    tile.sub = sub ? sub.k : null;
-    if (sub){
-      if (sub.k === 's1'){ p.score += 3; pushLog('　数值预报试验：+3 分'); }
-      else if (sub.k === 's2'){ p.coins += 2; pushLog('　台站加密观测：+2 经费'); }
-      else if (sub.k === 's3'){ p.tech += 2; pushLog('　青年科技基金：+2 技术员'); }
-      // s4 / s5 在阶段末和终局结算
-    }
-  } else if (tile.kind === 'animal'){
-    // 同区已有农业板块作物数合计
-    const reg = p.regions[cell.region];
-    let total = tile.herd || 2;
-    for (const idx of reg.cells){
-      const b = p.board[idx].built;
-      if (b && b.kind === 'animal' && idx !== cell.i) total += (b.herd || 2);
-    }
-    p.score += total;
-    pushLog('　农业示范：同区作物合计 ' + total + '，得 ' + total + ' 分');
-  } else if (tile.kind === 'ship'){
-    p.shipTrack++;
-    pushLog('　数据链：传输轨 → ' + p.shipTrack);
-    // 整港取货（自动挑件数最多的港口）
-    const avail = [1,2,3,4,5,6].filter(n => G.ports[n].length && (p.goods[n] || Object.keys(p.goods).length < 3));
-    if (avail.length){
-      avail.sort((a,b)=> G.ports[b].length - G.ports[a].length);
-      const n = avail[0], cnt = G.ports[n].length;
-      p.goods[n] = (p.goods[n]||0) + cnt;
-      G.ports[n] = [];
-      pushLog('　数据链：取走 ' + n + ' 号港口 ' + cnt + ' 件数据包');
+  /* ---------------- HUD ---------------- */
+  function paintHud() {
+    scoreEl.innerHTML = S.score + '<small>分</small>';
+    bestEl.textContent = '最高 ' + S.best;
+    livesEl.innerHTML = '';
+    for (let i = 0; i < MAX_LIVES; i++) {
+      const d = document.createElement('div');
+      d.className = 'life' + (i < S.lives ? '' : ' off');
+      livesEl.appendChild(d);
     }
   }
-}
 
-function findSub(list, name){ return list.find(x => x.name === name); }
-
-function checkRegion(p, cell, tile){
-  const reg = p.regions[cell.region];
-  const done = reg.cells.every(i => p.board[i].built);
-  if (!done) return;
-  const n = reg.cells.length;
-  const base = REGION_SCORE[Math.min(n, 8)] || 36;
-  const bonus = PHASE_BONUS[G.phase];
-  p.score += base + bonus;
-  pushLog('★ ' + p.name + ' 完成「' + COLS[reg.ci].name + '」' + n + ' 格区域：+' + base + ' + 阶段奖励 ' + bonus);
-  toast('区域完成！+' + (base + bonus) + ' 分');
-}
-
-function checkColorAward(p, ci){
-  const cells = p.board.filter(c => c.ci === ci);
-  if (!cells.every(c => c.built)) return;
-  if (!G.colorAward[ci]) G.colorAward[ci] = [];
-  if (G.colorAward[ci].includes(p.idx)) return;
-  if (G.colorAward[ci].length >= 2) return;
-  const order = G.colorAward[ci].length;
-  const pts = G.players.length >= 3 ? (order === 0 ? 6 : 3) : (order === 0 ? 5 : 3);
-  G.colorAward[ci].push(p.idx);
-  p.score += pts;
-  pushLog('◆ ' + p.name + ' 首个铺满「' + COLS[ci].name + '」，颜色奖励 +' + pts + ' 分');
-  toast('铺满' + COLS[ci].name + '！+' + pts);
-}
-
-/* ==================================================================
-   其他行动
-   ================================================================== */
-function actUpload(p, dieIdx){
-  const v = p.dice[dieIdx];
-  const cnt = p.goods[v] || 0;
-  if (!cnt){ toast('没有 ' + v + ' 号数据包'); return; }
-  const pts = 2;
-  p.score += cnt * pts;
-  p.coins += 1;
-  p.goods[v] = 0;
-  delete p.goods[v];
-  pushLog(p.name + ' 上传 ' + cnt + ' 件 ' + v + ' 号数据包：+' + (cnt*pts) + ' 分，+1 经费');
-  useDie(p, dieIdx);
-  render();
-}
-
-function actTech(p, dieIdx){
-  p.tech += 2;
-  pushLog(p.name + ' 调来 2 名技术员（共 ' + p.tech + '）');
-  useDie(p, dieIdx);
-  render();
-}
-
-function actBuy(p){
-  if (p.bought){ toast('本回合已经调拨过了'); return; }
-  if (p.coins < 2){ toast('经费不足（要 2）'); return; }
-  if (!G.market.length){ toast('省局没有可调拨的板块'); return; }
-  if (p.store.length >= 4){ toast('暂存区满了'); return; }
-  p.coins -= 2;
-  p.bought = true;
-  const t = G.market.pop();
-  p.store.push(t);
-  pushLog(p.name + ' 花 2 经费调拨「' + t.name + '」');
-  render();
-}
-
-function adjustDie(p, dieIdx, delta){
-  if (p.used[dieIdx]) return;
-  if (p.tech <= 0){ toast('没有技术员了'); return; }
-  p.tech--;
-  let v = p.dice[dieIdx] + delta;
-  if (v > 6) v = 1;
-  if (v < 1) v = 6;
-  p.dice[dieIdx] = v;
-  render();
-}
-
-/* ==================================================================
-   终局
-   ================================================================== */
-function endGame(){
-  G.over = true;
-  const rows = [];
-  for (const p of G.players){
-    let goods = 0;
-    for (const k in p.goods) goods += p.goods[k];
-    let regions = 0;
-    for (const r of p.regions){ if (r.cells.every(i => p.board[i].built)) regions++; }
-    let sciExtra = 0;
-    for (const c of p.board){
-      if (c.built && c.built.kind === 'monastery' && c.built.sub === 's5') sciExtra += regions * 2;
-    }
-    const techPts = Math.floor(p.tech / 2);
-    const total = p.score + goods + p.coins + techPts + sciExtra;
-    rows.push({ p, goods, techPts, sciExtra, total });
-  }
-  rows.sort((a,b)=> b.total - a.total);
-  const soloBest = Number(localStorage.getItem('buzhanji_best') || 0);
-  let bestTag = '';
-  if (G.mode === 'solo'){
-    if (rows[0].total > soloBest){ localStorage.setItem('buzhanji_best', rows[0].total); bestTag = ' · 新纪录'; }
-    else bestTag = ' · 最高 ' + soloBest;
-  }
-  let html = '<h2>25 轮结束</h2>';
-  rows.forEach((r,i)=>{
-    html += '<div style="margin:10px 0;padding:10px;border-radius:10px;background:#132436">'
-      + '<div style="font-size:12px;color:' + r.p.hex + '">' + (G.mode === 'solo' ? '本局成绩' : r.p.name + (i===0?' · 胜':'')) + '</div>'
-      + '<div class="big" style="color:' + r.p.hex + '">' + r.total + '</div>'
-      + (i===0 && bestTag ? '<div style="font-size:11px;color:var(--gold);letter-spacing:1px">' + bestTag + '</div>' : '')
-      + '<table>'
-      + '<tr><td>局内得分</td><td>' + r.p.score + '</td></tr>'
-      + '<tr><td>数据包 ' + r.goods + ' 件</td><td>+' + r.goods + '</td></tr>'
-      + '<tr><td>经费 ' + r.p.coins + '</td><td>+' + r.p.coins + '</td></tr>'
-      + '<tr><td>技术员 ' + r.p.tech + ' 名</td><td>+' + r.techPts + '</td></tr>'
-      + (r.sciExtra ? '<tr><td>科研课题</td><td>+' + r.sciExtra + '</td></tr>' : '')
-      + '</table></div>';
-  });
-  html += '<button class="btn" id="againBtn">再来一局</button>';
-  $('#modalInner').innerHTML = html;
-  $('#modal').classList.remove('hide');
-  document.getElementById('againBtn').onclick = () => {
-    $('#modal').classList.add('hide');
-    newGame(G.mode); render();
-  };
-  render();
-}
-
-/* ==================================================================
-   渲染
-   ================================================================== */
-function render(){
-  if (!G) return;
-  renderHud();
-  renderBoard();
-  renderSide();
-  renderDock();
-}
-
-function renderHud(){
-  $('#phaseLabel').textContent = PHASE_NAMES[G.phase] || 'E';
-  $('#roundLabel').textContent = G.round;
-  const box = $('#scores');
-  box.innerHTML = '';
-  const p = cur();
-  G.players.forEach(pl => {
-    const d = document.createElement('div');
-    d.className = 'pl' + (pl === p && !G.over ? ' on' : '');
-    d.style.color = pl.hex;
-    d.innerHTML = '<span class="dot"></span><span class="nm" style="color:var(--ink)">' + pl.name
-      + '</span><span class="mini">经费 ' + pl.coins + ' · 技术员 ' + pl.tech + ' · 轨 ' + pl.shipTrack + '</span>'
-      + '<span class="sc" style="color:' + pl.hex + '">' + pl.score + '</span>';
-    box.appendChild(d);
-  });
-  $('#turnName').innerHTML = G.over ? '已结束' : ('当前：<b style="color:' + p.hex + '">' + p.name + '</b>');
-  $('#hint').textContent = hintText();
-}
-
-function hintText(){
-  const p = cur();
-  if (!p) return '';
-  if (G.pick.tile !== null) return '点击高亮格子放下板块';
-  if (G.pick.die !== null) return '骰点 ' + p.dice[G.pick.die] + '：点仓库取件 / 点数据包上传 / 点板块布点';
-  if (p.used.every(u=>u)) return '本回合结束';
-  return '先点一颗骰子';
-}
-
-function renderBoard(){
-  const p = cur();
-  if (!p) return;
-  const dieVal = G.pick.die !== null ? p.dice[G.pick.die] : null;
-  const placing = G.pick.tile !== null ? p.store[G.pick.tile] : null;
-  let s = '<rect x="-300" y="-175" width="600" height="350" fill="none"/>';
-
-  for (const c of p.board){
-    const col = COLS[c.ci];
-    const built = c.built;
-    let cls = 'cell';
-    let legal = false;
-    if (placing && dieVal !== null){
-      legal = canPlaceAt(p, c, placing, dieVal);
-    }
-    if (legal) cls += ' can hl';
-    const fill = built ? col.c : col.c;
-    const op = built ? 1 : (legal ? 0.55 : 0.18);
-    s += '<g class="' + cls + '" data-i="' + c.i + '">';
-    s += '<polygon points="' + hexPts(c.cx, c.cy, HEX_R - 1.6) + '" fill="' + fill + '" fill-opacity="' + op
-      + '" stroke="' + col.c + '" stroke-opacity="' + (built ? 1 : 0.55) + '" stroke-width="1.2"/>';
-    if (built){
-      const owner = G.players[built.pid];
-      s += '<polygon points="' + hexPts(c.cx, c.cy, HEX_R - 1.6) + '" fill="none" stroke="' + owner.hex
-        + '" stroke-width="2.2" stroke-opacity="' + (built.start ? 0.5 : 0.9) + '"/>';
-      s += svgIcon(built.icon || 'obs', c.cx, c.cy, 22, '#07141f', 1.9);
+  function paintCombo() {
+    if (S.combo >= 3) {
+      comboEl.textContent = '连击 ×' + S.combo;
+      comboEl.classList.add('on');
     } else {
-      for (const [px,py] of PIP_POS[c.pip]){
-        s += '<circle cx="' + (c.cx + px*5.2) + '" cy="' + (c.cy + py*5.2) + '" r="2.5" fill="#dbeaf7" fill-opacity="0.75"/>';
+      comboEl.classList.remove('on');
+    }
+  }
+
+  /* ---------------- 生成物 ---------------- */
+  function spawn() {
+    const hailChance = Math.min(0.30, 0.08 + S.t * 0.005);
+    const isHail = Math.random() < hailChance;
+    const r = isHail ? rand(8, 11) : rand(5, 7.5);
+    const margin = r + 14;
+    S.items.push({
+      type: isHail ? 'hail' : 'drop',
+      x: rand(margin, W - margin),
+      y: -r - 10,
+      r,
+      vy: (isHail ? 285 : 210) + S.t * 6.0 + rand(0, 90),
+      wob: rand(0, Math.PI * 2),
+      rot: rand(0, Math.PI * 2),
+      vy2: 0
+    });
+  }
+
+  function burst(x, y, color, n, power) {
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, Math.PI * 2);
+      const sp = rand(power * 0.25, power);
+      S.parts.push({
+        x, y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - rand(20, 90),
+        life: rand(0.35, 0.8),
+        max: 0.8,
+        r: rand(1.4, 3.6),
+        c: color
+      });
+    }
+  }
+
+  /* ---------------- 更新 ---------------- */
+  function update(dt) {
+    // 背景雨丝一直动
+    for (const l of S.rainLines) {
+      l.y += l.sp * dt;
+      l.x -= l.sp * 0.14 * dt;
+      if (l.y > H + 30) { l.y = -30; l.x = Math.random() * W; }
+      if (l.x < -20) l.x = W + 10;
+    }
+    for (const c of S.clouds) {
+      c.x += c.sp * dt;
+      if (c.x - c.r > W) c.x = -c.r;
+    }
+
+    // 粒子
+    for (let i = S.parts.length - 1; i >= 0; i--) {
+      const p = S.parts[i];
+      p.vy += 900 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) S.parts.splice(i, 1);
+    }
+
+    if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 34);
+    if (S.flash > 0) S.flash = Math.max(0, S.flash - dt * 2.4);
+
+    if (S.state !== 'play') return;
+
+    S.t += dt;
+
+    /* --- 木桶移动 --- */
+    const b = S.bucket;
+    const half = b.w / 2;
+    const speed = 640;
+    let dir = 0;
+    if (S.keys.left) dir -= 1;
+    if (S.keys.right) dir += 1;
+
+    if (dir !== 0) {
+      b.x += dir * speed * dt;
+      b.target = null;
+    } else if (b.target !== null) {
+      b.x += (b.target - b.x) * Math.min(1, dt * 16);
+    }
+    b.x = clamp(b.x, half, W - half);
+
+    /* --- 生成 --- */
+    S.spawnTimer -= dt;
+    if (S.spawnTimer <= 0) {
+      spawn();
+      const base = Math.max(0.30, 0.92 - S.t * 0.014);
+      S.spawnTimer = base * rand(0.72, 1.25);
+    }
+
+    /* --- 下落与碰撞 --- */
+    const top = b.y;
+    for (let i = S.items.length - 1; i >= 0; i--) {
+      const it = S.items[i];
+      it.y += it.vy * dt;
+      it.vy += 120 * dt;
+      it.rot += dt * (it.type === 'hail' ? 3.2 : 1.1);
+      it.wob += dt * 3;
+
+      const hitX = Math.abs(it.x - b.x) < half + it.r * 0.55;
+      const hitY = it.y + it.r >= top && it.y - it.r < top + b.w * 0.34;
+
+      if (hitX && hitY && it.y > 0) {
+        if (it.type === 'drop') {
+          S.combo++;
+          const gain = 1 + Math.floor(S.combo / 5);
+          S.score += gain;
+          S.water = Math.min(1, S.water + 0.012);
+          burst(it.x, top, 'rgba(120,215,255,', 8, 190);
+          S.items.splice(i, 1);
+          paintHud();
+          paintCombo();
+        } else {
+          S.lives--;
+          S.combo = 0;
+          S.shake = 13;
+          S.flash = 0.5;
+          burst(it.x, top, 'rgba(225,240,255,', 16, 300);
+          S.items.splice(i, 1);
+          paintHud();
+          paintCombo();
+          if (S.lives <= 0) { gameOver(); return; }
+        }
+        continue;
+      }
+
+      if (it.y - it.r > H + 40) {
+        if (it.type === 'drop') { S.combo = 0; paintCombo(); }
+        S.items.splice(i, 1);
       }
     }
-    s += '</g>';
+
+    // 分数涨了水位也涨一点（氛围）
+    paintCombo();
   }
-  $('#board').innerHTML = s;
-}
 
-function renderSide(){
-  const p = cur();
-  if (!p) return;
-  // 骰子
-  const dr = $('#diceRow');
-  dr.innerHTML = '';
-  p.dice.forEach((v,i) => {
-    const d = document.createElement('div');
-    d.className = 'die' + (p.used[i] ? ' used' : '') + (G.pick.die === i ? ' sel' : '');
-    const dis = p.tech <= 0 ? ' disabled' : '';
-    d.innerHTML = v + (p.used[i] ? '' : '<span class="adj"><button data-d="-1" data-i="' + i + '"' + dis + '>−</button><button data-d="1" data-i="' + i + '"' + dis + '>+</button></span>');
-    d.onclick = () => { if (p.used[i]) return; G.pick.die = (G.pick.die === i ? null : i); G.pick.tile = null; render(); };
-    dr.appendChild(d);
-  });
-  dr.querySelectorAll('.adj button').forEach(b => {
-    b.onclick = e => { e.stopPropagation(); adjustDie(p, +b.dataset.i, +b.dataset.d); };
-  });
+  /* ---------------- 绘制 ---------------- */
+  function drawBackground() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#0a1830');
+    g.addColorStop(0.45, '#102c52');
+    g.addColorStop(0.78, '#0d2038');
+    g.addColorStop(1, '#071322');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
 
-  // 暂存区
-  const sr = $('#storeRow');
-  sr.innerHTML = '';
-  for (let i=0;i<4;i++){
-    const t = p.store[i];
-    const d = document.createElement('div');
-    if (!t){
-      d.className = 'slot';
-      d.innerHTML = '空';
-    } else {
-      d.className = 'slot f' + (G.pick.tile === i ? ' sel' : '');
-      d.innerHTML = '<div><div class="t" style="color:' + COLS[t.ci].c + '">' + htmlIcon(t.icon, 20) + '</div><div class="n">' + t.name + '</div><div class="fx">' + (t.desc || '') + '</div></div>';
-      d.onclick = () => {
-        if (G.pick.die === null){ toast('先选一颗骰子'); return; }
-        G.pick.tile = (G.pick.tile === i ? null : i);
-        render();
-      };
+    // 云
+    for (const c of S.clouds) {
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(160,205,255,' + c.a + ')';
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      ctx.arc(c.x + c.r * 0.7, c.y + c.r * 0.16, c.r * 0.72, 0, Math.PI * 2);
+      ctx.arc(c.x - c.r * 0.72, c.y + c.r * 0.2, c.r * 0.62, 0, Math.PI * 2);
+      ctx.fill();
     }
-    sr.appendChild(d);
+
+    // 背景雨丝
+    ctx.lineCap = 'round';
+    for (const l of S.rainLines) {
+      ctx.strokeStyle = 'rgba(150,205,255,' + l.a + ')';
+      ctx.lineWidth = l.w;
+      ctx.beginPath();
+      ctx.moveTo(l.x, l.y);
+      ctx.lineTo(l.x - l.len * 0.22, l.y + l.len);
+      ctx.stroke();
+    }
+
+    // 闪电
+    if (S.flash > 0.05) {
+      ctx.fillStyle = 'rgba(190,225,255,' + (S.flash * 0.22) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // 底部积水
+    const waterH = 34 + S.water * 30;
+    const wy = H - waterH;
+    const wg = ctx.createLinearGradient(0, wy, 0, H);
+    wg.addColorStop(0, 'rgba(70,150,215,.28)');
+    wg.addColorStop(1, 'rgba(20,60,105,.55)');
+    ctx.fillStyle = wg;
+    ctx.beginPath();
+    ctx.moveTo(0, wy + Math.sin(S.t * 1.6) * 3);
+    for (let x = 0; x <= W; x += 12) {
+      ctx.lineTo(x, wy + Math.sin(x * 0.02 + S.t * 1.6) * 3);
+    }
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    ctx.fill();
   }
 
-  // 日志
-  $('#log').innerHTML = G.log.slice(-14).map(l => '<div>' + l + '</div>').join('');
-}
-
-function renderDock(){
-  const p = cur();
-  const whRow = $('#whRow');
-  whRow.innerHTML = '';
-  for (let n=1;n<=6;n++){
-    const arr = G.wh[n] || [];
-    const d = document.createElement('div');
-    const can = G.pick.die !== null && p.dice[G.pick.die] === n && arr.length > 0 && p.store.length < 4;
-    d.className = 'wh' + (can ? ' can' : '') + (arr.length ? '' : ' empty');
-    d.innerHTML = '<div class="h">' + n + ' 号仓</div>'
-      + (arr.length
-          ? arr.map(t => '<div class="it" style="color:' + COLS[t.ci].c + '">' + htmlIcon(t.icon, 11) + '<span>' + t.name + '</span></div>').join('')
-          : '<div class="it" style="opacity:.4">·</div>');
-    d.onclick = () => {
-      if (!arr.length) return;
-      if (G.pick.die === null){ toast('先选一颗骰子'); return; }
-      if (p.dice[G.pick.die] !== n){ toast('骰点 ' + p.dice[G.pick.die] + ' 取不了 ' + n + ' 号仓'); return; }
-      actTake(p, G.pick.die);
-    };
-    whRow.appendChild(d);
+  function drawDrop(it) {
+    const r = it.r;
+    ctx.save();
+    ctx.translate(it.x, it.y);
+    ctx.rotate(Math.sin(it.wob) * 0.16);
+    const g = ctx.createLinearGradient(0, -r * 2.4, 0, r * 1.4);
+    g.addColorStop(0, 'rgba(190,240,255,.95)');
+    g.addColorStop(0.55, 'rgba(94,200,255,.92)');
+    g.addColorStop(1, 'rgba(52,140,220,.9)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 2.5);
+    ctx.bezierCurveTo(r * 1.15, -r * 0.5, r * 1.05, r * 1.15, 0, r * 1.15);
+    ctx.bezierCurveTo(-r * 1.05, r * 1.15, -r * 1.15, -r * 0.5, 0, -r * 2.5);
+    ctx.fill();
+    // 高光
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.3, -r * 0.25, r * 0.24, r * 0.42, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
-  // 港口 + 我的数据包（合并一格）
-  const pr = $('#portRow');
-  pr.innerHTML = '';
-  for (let n=1;n<=6;n++){
-    const arr = G.ports[n] || [];
-    const cnt = p.goods[n] || 0;
-    const d = document.createElement('div');
-    const canUpload = !p.used.every(u=>u) && G.pick.die !== null && p.dice[G.pick.die] === n && cnt > 0;
-    d.className = 'port' + (cnt ? ' has' : '') + (canUpload ? ' can' : '');
-    d.innerHTML = '<div class="h">' + n + ' 号</div>'
-      + '<div class="g">港 ' + (arr.length || 0) + ' · 我 <b>' + (cnt || 0) + '</b></div>';
-    d.onclick = () => {
-      if (!cnt) { if (arr.length) toast('港口有 ' + arr.length + ' 件，要放数据链才能取'); return; }
-      if (G.pick.die === null){ toast('先选一颗骰子'); return; }
-      if (p.dice[G.pick.die] !== n){ toast('骰点要对上 ' + n); return; }
-      actUpload(p, G.pick.die);
-    };
-    pr.appendChild(d);
+  function drawHail(it) {
+    const r = it.r;
+    ctx.save();
+    ctx.translate(it.x, it.y);
+    ctx.rotate(it.rot);
+
+    // 拖尾
+    ctx.strokeStyle = 'rgba(200,230,255,.22)';
+    ctx.lineWidth = r * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 3.4);
+    ctx.lineTo(0, -r * 0.4);
+    ctx.stroke();
+
+    const g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.15, 0, 0, r * 1.05);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.6, '#dcebff');
+    g.addColorStop(1, '#9dbfe6');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r * 0.86, -r * 0.5);
+    ctx.lineTo(r * 0.86, r * 0.5);
+    ctx.lineTo(0, r);
+    ctx.lineTo(-r * 0.86, r * 0.5);
+    ctx.lineTo(-r * 0.86, -r * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.75)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
   }
 
-  const ar = $('#actRow');
-  ar.innerHTML = '<button class="btn" id="btnTech">调技术员（+2）</button>'
-    + '<button class="btn gold" id="btnBuy">省局调拨（2 经费）</button>'
-    + '<button class="btn" id="btnPass">放弃这颗骰子</button>'
-    + '<span style="margin-left:auto;font-size:11px;color:var(--dim);align-self:center">'
-    + '回合 ' + G.turnIdx + '/' + G.order.length + ' · 本阶段余货 ' + (G.portStock||0) + '</span>';
+  function drawBucket() {
+    const b = S.bucket;
+    const half = b.w / 2;
+    const x = b.x, y = b.y, h = b.w * 0.66;
+    const top = half, bot = half * 0.74;
 
-  $('#btnTech').onclick = () => {
-    if (G.pick.die === null){ toast('先选一颗骰子'); return; }
-    actTech(p, G.pick.die);
-  };
-  $('#btnBuy').onclick = () => { actBuy(p); };
-  $('#btnPass').onclick = () => {
-    if (G.pick.die === null){ toast('先选一颗骰子'); return; }
-    useDie(p, G.pick.die);
-  };
-}
+    ctx.save();
 
-/* ==================================================================
-   交互
-   ================================================================== */
-$('#board').addEventListener('click', e => {
-  const g = e.target.closest('[data-i]');
-  if (!g) return;
-  const i = +g.dataset.i;
-  const p = cur();
-  if (!p || G.over) return;
-  if (G.pick.tile === null){ toast('先选骰子，再点暂存区的板块'); return; }
-  if (G.pick.die === null){ toast('先选一颗骰子'); return; }
-  const cell = p.board[i];
-  const tile = p.store[G.pick.tile];
-  if (!canPlaceAt(p, cell, tile, p.dice[G.pick.die])){ toast('要同色、同点数、且挨着已建板块'); return; }
-  placeTile(p, G.pick.die, G.pick.tile, i);
-});
+    // 地面阴影
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + h + 6, half * 0.95, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-let toastTimer = null;
-function toast(msg){
-  const t = $('#toast');
-  t.textContent = msg;
-  t.classList.add('on');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=> t.classList.remove('on'), 1800);
-}
-function pushLog(s){ G.log.push(s); if (G.log.length > 80) G.log.shift(); }
+    // 桶身
+    const g = ctx.createLinearGradient(x - top, 0, x + top, 0);
+    g.addColorStop(0, '#1d5d9c');
+    g.addColorStop(0.35, '#3f9be0');
+    g.addColorStop(0.62, '#5cc0f7');
+    g.addColorStop(1, '#19507f');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x - top, y);
+    ctx.lineTo(x + top, y);
+    ctx.lineTo(x + bot, y + h);
+    ctx.quadraticCurveTo(x, y + h + 10, x - bot, y + h);
+    ctx.closePath();
+    ctx.fill();
 
-/* ==================================================================
-   开局
-   ================================================================== */
-function showStart(){
-  $('#modalInner').innerHTML =
-    '<h2>布站记</h2>'
-    + '<p>你是县气象局的规划员。用 25 轮，把一张县域观测网布起来——<br>'
-    + '装备靠骰子领，点位要对上颜色和点数，相邻才能接上。'
-    + '<br><br>规则一句话：<b>掷骰 → 取件 → 布点 → 完成区域得分</b>。</p>'
-    + '<button class="btn" id="btnDuo" style="margin-bottom:8px">双人同屏对战</button>'
-    + '<button class="btn" id="btnSolo" style="margin-bottom:8px">单人练习（刷分）</button>'
-    + '<button class="btn" id="btnRule2" style="font-size:12px;padding:9px">先看规则</button>';
-  $('#modal').classList.remove('hide');
-  $('#btnDuo').onclick = () => start('duo');
-  $('#btnSolo').onclick = () => start('solo');
-  $('#btnRule2').onclick = showRules;
-}
-function showRules(){
-  $('#modalInner').innerHTML =
-    '<h2 style="font-size:19px">布站记 · 规则</h2>'
-    + '<div class="rules">'
-    + '<p style="color:#8aa4bd;font-size:11.5px;margin:0 0 8px">25 轮，把县域观测网铺起来，分高者胜。</p>'
-    + '<b>每轮两颗骰子，各做 1 次行动：</b>'
-    + '<ul>'
-    + '<li><span class="k">取装备</span>：骰点 n → 从 n 号物资仓拿 1 块（暂存区最多 4 块）</li>'
-    + '<li><span class="k">布点</span>：骰点必须等于格子上的点数，且颜色对得上、挨着已建板块</li>'
-    + '<li><span class="k">上传数据</span>：骰点 n → 卖掉自己的 n 号数据包，每件 2 分 + 1 经费</li>'
-    + '<li><span class="k">调技术员</span>：任意骰点 → 换 2 名技术员</li>'
-    + '</ul>'
-    + '<b>技术员能改骰点</b>：花 1 名让一颗骰子 ±1（1 和 6 相邻），一次可连用多名。<br>'
-    + '<b>得分</b>：铺满一片同色区域 → 按格数给分（3 格 6 分、4 格 10 分、5 格 15 分…）再加当前阶段奖励 A10 / B8 / C6 / D4 / E2。<br>'
-    + '<b>颜色奖励</b>：第一个铺满某种颜色的全部格子 +5 分，第二个 +3 分。<br>'
-    + '<b>终局</b>：每件数据包 1 分、每枚经费 1 分、每 2 名技术员 1 分。'
-    + '</div>'
-    + '<button class="btn" id="rulesClose" style="width:100%;padding:11px">知道了</button>';
-  $('#modal').classList.remove('hide');
-  $('#rulesClose').onclick = () => {
-    $('#modal').classList.add('hide');
-    if (!G) showStart();
-  };
-}
+    // 桶口
+    ctx.fillStyle = 'rgba(10,32,58,.85)';
+    ctx.beginPath();
+    ctx.ellipse(x, y, top, top * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(160,225,255,.85)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(x, y, top, top * 0.28, 0, 0, Math.PI * 2);
+    ctx.stroke();
 
-function start(mode){
-  $('#modal').classList.add('hide');
-  newGame(mode);
-  render();
-}
-$('#btnHelp').onclick = showRules;
-showStart();
+    // 桶身反光条
+    ctx.fillStyle = 'rgba(220,245,255,.16)';
+    ctx.beginPath();
+    ctx.moveTo(x - top * 0.55, y + h * 0.18);
+    ctx.lineTo(x - top * 0.2, y + h * 0.18);
+    ctx.lineTo(x - top * 0.32, y + h * 0.92);
+    ctx.lineTo(x - top * 0.6, y + h * 0.92);
+    ctx.closePath();
+    ctx.fill();
+
+    // 提手
+    ctx.strokeStyle = 'rgba(190,230,255,.5)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(x, y - top * 0.1, top * 0.62, top * 0.5, 0, Math.PI * 1.08, Math.PI * 1.92);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawParts() {
+    for (const p of S.parts) {
+      const a = clamp(p.life / p.max, 0, 1);
+      ctx.fillStyle = p.c + a.toFixed(2) + ')';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * (0.4 + a * 0.8), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function render() {
+    ctx.save();
+    if (S.shake > 0.2) {
+      ctx.translate(rand(-S.shake, S.shake) * 0.6, rand(-S.shake, S.shake) * 0.6);
+    }
+    drawBackground();
+    for (const it of S.items) {
+      if (it.type === 'drop') drawDrop(it); else drawHail(it);
+    }
+    drawParts();
+    drawBucket();
+    ctx.restore();
+
+    if (S.state === 'pause') {
+      ctx.fillStyle = 'rgba(6,13,26,.6)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#cfe6ff';
+      ctx.font = '700 22px system-ui,-apple-system,"PingFang SC",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('已暂停', W / 2, H / 2);
+      ctx.font = '400 13px system-ui,-apple-system,"PingFang SC",sans-serif';
+      ctx.fillStyle = '#7fa3c8';
+      ctx.fillText('按空格继续', W / 2, H / 2 + 26);
+    }
+  }
+
+  /* ---------------- 流程 ---------------- */
+  function reset() {
+    S.t = 0;
+    S.score = 0;
+    S.lives = MAX_LIVES;
+    S.combo = 0;
+    S.items = [];
+    S.parts = [];
+    S.spawnTimer = 0.55;
+    S.shake = 0;
+    S.flash = 0;
+    S.water = 0;
+    S.bucket.x = W / 2;
+    S.bucket.target = null;
+    paintHud();
+    paintCombo();
+  }
+
+  function startGame() {
+    reset();
+    S.state = 'play';
+    panel.classList.add('hide');
+  }
+
+  function gameOver() {
+    S.state = 'over';
+    S.best = Math.max(S.best, S.score);
+    localStorage.setItem(BEST_KEY, String(S.best));
+    paintHud();
+    panel.innerHTML =
+      '<div class="finalLabel">本局得分</div>' +
+      '<div class="final">' + S.score + '</div>' +
+      '<div class="badge">' + (S.best === S.score && S.score > 0 ? '新纪录！' : '最高 ' + S.best) + '</div>' +
+      '<button class="btn" id="againBtn">再 来 一 局</button>';
+    panel.classList.remove('hide');
+    document.getElementById('againBtn').addEventListener('click', startGame);
+  }
+
+  function togglePause() {
+    if (S.state === 'play') { S.state = 'pause'; }
+    else if (S.state === 'pause') { S.state = 'play'; S.lastTs = 0; }
+  }
+
+  /* ---------------- 输入 ---------------- */
+  function pointerTo(clientX) {
+    const r = cv.getBoundingClientRect();
+    S.bucket.target = clamp(clientX - r.left, S.bucket.w / 2, W - S.bucket.w / 2);
+  }
+
+  stage.addEventListener('pointermove', (e) => {
+    if (S.state !== 'play') return;
+    pointerTo(e.clientX);
+  }, { passive: true });
+
+  stage.addEventListener('pointerdown', (e) => {
+    if (S.state !== 'play') return;
+    pointerTo(e.clientX);
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { S.keys.left = true; }
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { S.keys.right = true; }
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (S.state === 'ready' || S.state === 'over') {
+        if (document.getElementById('startBtn')) startBtn.click();
+        else { const b = document.getElementById('againBtn'); if (b) b.click(); }
+      } else togglePause();
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') S.keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') S.keys.right = false;
+  });
+
+  startBtn.addEventListener('click', startGame);
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+
+  /* ---------------- 主循环 ---------------- */
+  function loop(ts) {
+    if (!S.lastTs) S.lastTs = ts;
+    let dt = (ts - S.lastTs) / 1000;
+    S.lastTs = ts;
+    if (dt > 0.05) dt = 0.05;   // 切标签页回来不跳帧
+    update(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  resize();
+  paintHud();
+  paintCombo();
+  requestAnimationFrame(loop);
 })();
 </script>
 </body>
