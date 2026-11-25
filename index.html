@@ -15,7 +15,7 @@
     font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
     user-select:none;overflow-x:hidden}
   body{background:radial-gradient(1200px 700px at 50% -20%,#123049 0%,#08111c 60%) fixed}
-  #app{max-width:1080px;margin:0 auto;padding:8px 12px 10px;display:flex;flex-direction:column;gap:8px;height:100vh}
+  #app{max-width:1080px;margin:0 auto;padding:6px 12px 8px;display:flex;flex-direction:column;gap:6px;height:100vh}
 
   /* ---------- 顶栏 ---------- */
   header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -91,8 +91,8 @@
   .gd b{display:block;font-size:11px;font-weight:700}
 
   /* ---------- 底栏 ---------- */
-  #dock{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px 12px 8px;display:flex;flex-direction:column;gap:4px;flex:none}
-  .dlabel{font-size:9px;letter-spacing:1.5px;color:#5f7d99}
+  #dock{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:5px 10px 6px;display:flex;flex-direction:column;gap:3px;flex:none}
+  .dlabel{font-size:9px;letter-spacing:1.2px;color:#5f7d99;margin-top:1px}
   .whRow,.portRow{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
   .wh{border:1px solid #20364c;border-radius:9px;background:#101f2e;padding:3px 4px;text-align:left;min-height:44px;
     display:flex;flex-direction:column;gap:2px;justify-content:flex-start;transition:.15s}
@@ -104,17 +104,21 @@
   .wh.empty{opacity:.35}
   .actRow{display:flex;gap:6px;flex-wrap:wrap}
   .btn{appearance:none;border:1px solid var(--line);background:#15293c;color:var(--ink);border-radius:9px;
-    padding:7px 12px;font-size:12px;letter-spacing:1px;cursor:pointer;transition:.15s}
+    padding:6px 12px;font-size:12px;letter-spacing:1px;cursor:pointer;transition:.15s}
   .btn:hover{border-color:var(--accent);color:#bfe9fb}
   .btn.on{background:#1c3d57;border-color:var(--accent);color:#d9f4ff}
   .btn:disabled{opacity:.35;cursor:default}
   .btn.gold{border-color:#6b5327;background:#2a2213;color:var(--gold)}
-  .port{padding:2px 2px;text-align:center;border-radius:7px;background:#101f2e;border:1px solid #1b2f43}
+  .port{padding:3px 2px;text-align:center;border-radius:7px;background:#101f2e;border:1px solid #1b2f43;transition:.15s}
   .port .h{font-size:9px;color:#5f7d99}
-  .port .g{font-size:10px;color:#8fb6d4;line-height:1.3}
+  .port .g{font-size:10px;color:#6f8ba6;line-height:1.35}
+  .port .g b{color:#cfe6f8}
+  .port.has{border-color:#2f5675}
+  .port.has .g b{color:#9fe0ff}
+  .port.can{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 16px -6px var(--accent);cursor:pointer}
 
   /* ---------- 日志 ---------- */
-  #log{max-height:42px;overflow:auto;font-size:11px;line-height:1.55;color:#9db6cd;padding-top:2px;border-top:1px solid #17293b}
+  #log{flex:none;max-height:38px;overflow:auto;font-size:11px;line-height:1.5;color:#8fa9c1;padding:4px 6px;border-top:1px solid #17293b;background:#0c1826;border-radius:0 0 12px 12px}
   #log div{opacity:.85}
   #log div:first-child{color:#cfe8f8}
 
@@ -169,6 +173,7 @@
         <span class="hint" id="hint"></span>
       </div>
       <div class="boardWrap"><svg id="board" viewBox="-200 -178 400 356"></svg></div>
+      <div id="log"></div>
     </section>
 
     <aside>
@@ -186,12 +191,9 @@
   <footer id="dock">
     <div class="dlabel">物资仓（骰点决定能取几号仓）</div>
     <div class="whRow" id="whRow"></div>
-    <div class="dlabel">港口数据包（数据链可整港取走）</div>
+    <div class="dlabel">港口 / 我的数据包（骰点对上才能上传，每件 2 分 + 1 经费）</div>
     <div class="portRow" id="portRow"></div>
-    <div class="dlabel">我的数据包（骰点对上才能上传，每件 2 分 + 1 经费）</div>
-    <div class="goods" id="goodsRow"></div>
     <div class="actRow" id="actRow"></div>
-    <div id="log"></div>
   </footer>
 </div>
 
@@ -905,32 +907,24 @@ function renderDock(){
     whRow.appendChild(d);
   }
 
+  // 港口 + 我的数据包（合并一格）
   const pr = $('#portRow');
   pr.innerHTML = '';
   for (let n=1;n<=6;n++){
     const arr = G.ports[n] || [];
-    const d = document.createElement('div');
-    d.className = 'port';
-    d.innerHTML = '<div class="h">' + n + ' 号港</div><div class="g">' + (arr.length ? arr.length + ' 件' : '·') + '</div>';
-    pr.appendChild(d);
-  }
-
-  // 我的数据包
-  const gr = $('#goodsRow');
-  gr.innerHTML = '';
-  for (let n=1;n<=6;n++){
     const cnt = p.goods[n] || 0;
     const d = document.createElement('div');
     const canUpload = !p.used.every(u=>u) && G.pick.die !== null && p.dice[G.pick.die] === n && cnt > 0;
-    d.className = 'gd' + (cnt ? ' has' : '') + (canUpload ? ' can' : '');
-    d.innerHTML = '<b>' + n + ' 号</b>' + (cnt ? cnt + ' 件' : '—');
+    d.className = 'port' + (cnt ? ' has' : '') + (canUpload ? ' can' : '');
+    d.innerHTML = '<div class="h">' + n + ' 号</div>'
+      + '<div class="g">港 ' + (arr.length || 0) + ' · 我 <b>' + (cnt || 0) + '</b></div>';
     d.onclick = () => {
-      if (!cnt) return;
+      if (!cnt) { if (arr.length) toast('港口有 ' + arr.length + ' 件，要放数据链才能取'); return; }
       if (G.pick.die === null){ toast('先选一颗骰子'); return; }
       if (p.dice[G.pick.die] !== n){ toast('骰点要对上 ' + n); return; }
       actUpload(p, G.pick.die);
     };
-    gr.appendChild(d);
+    pr.appendChild(d);
   }
 
   const ar = $('#actRow');
