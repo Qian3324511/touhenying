@@ -11,5 +11,5 @@
 ---
 
 同系列另外两个：
-- [game-1 · 遛弯勇者](https://qian3324511.github.io/game-1/)
+- [game1 · 遛弯勇者](https://qian3324511.github.io/game1/)
 - [game2 · 布站记·县域气象观测网](https://qian3324511.github.io/game2/)
